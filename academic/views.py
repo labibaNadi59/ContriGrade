@@ -1,27 +1,26 @@
-from django.core.exceptions import ValidationError
-from django.http import HttpResponse
 from django.shortcuts import render, redirect
+from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
-from .models import Project ,Team, TeamMember
-from .forms import ProjectForm , TeamForm
+from accounts.decorators import student_required
+from .models import Project, Team, TeamMember
+from .forms import ProjectForm, TeamForm
 
 
 @login_required
 def dashboard_redirect(request):
-    # Route the user based on their role
-    if request.user.is_student:
-        return HttpResponse("Student Dashboard coming soon!")
 
-    # For Instructors, Coordinators, and Admins:
+    if request.user.is_student:
+        return redirect('student_dashboard')
+
+
     if request.method == 'POST':
         form = ProjectForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('dashboard_redirect')  # Refresh page after saving
+            return redirect('dashboard_redirect')
     else:
         form = ProjectForm()
 
-    # Fetch all active projects to display on the dashboard
     projects = Project.objects.all().order_by('-deadline')
 
     context = {
@@ -30,6 +29,25 @@ def dashboard_redirect(request):
         'user': request.user
     }
     return render(request, 'academic/instructor_dashboard.html', context)
+
+
+@student_required
+def student_dashboard(request):
+
+    membership = TeamMember.objects.filter(user=request.user).select_related('team__project').first()
+
+    teammates = None
+    if membership:
+
+        teammates = membership.team.members.exclude(user_id=request.user.user_id)
+
+    context = {
+        'user': request.user,
+        'membership': membership,
+        'teammates': teammates
+    }
+    return render(request, 'academic/student_dashboard.html', context)
+
 
 
 def team_management(request):
