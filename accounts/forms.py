@@ -14,6 +14,13 @@ class SignUpForm(forms.ModelForm):
             'role': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['role'].choices = [
+            choice for choice in User.Role.choices if choice[0] != User.Role.ADMIN
+        ]
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password'])

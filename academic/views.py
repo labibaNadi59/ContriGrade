@@ -8,11 +8,13 @@ from .forms import ProjectForm, TeamForm
 
 @login_required
 def dashboard_redirect(request):
-
-    if request.user.is_student:
+    # Route System Admin to their specific dashboard
+    if request.user.is_admin:
+        return redirect('system_admin_dashboard')
+    elif request.user.is_student:
         return redirect('student_dashboard')
 
-
+    # For Instructors and Course Coordinators:
     if request.method == 'POST':
         form = ProjectForm(request.POST)
         if form.is_valid():
