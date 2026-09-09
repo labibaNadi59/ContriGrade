@@ -4,6 +4,8 @@ from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember
 from .forms import ProjectForm, TeamForm
+from django.shortcuts import get_object_or_404
+from accounts.models import User
 
 
 @login_required
@@ -86,3 +88,42 @@ def team_management(request):
         'error_message': error_message
     }
     return render(request, 'academic/team_management.html', context)
+
+def team_edit(request, team_id):
+
+    team = get_object_or_404(Team, team_id=team_id)
+    error_message = None
+
+    if request.method == 'POST':
+        form = TeamForm(request.POST, instance=team)
+        if form.is_valid():
+            team = form.save()
+            selected_students = form.cleaned_data['members']
+
+            current_memberships = TeamMember.objects.filter(team=team)
+            current_student_ids = set(current_memberships.values_list('user_id', flat=True))
+            selected_student_ids = set(student.user_id for student in selected_students)
+
+            TeamMember.objects.filter(team=team, user_id__in=current_student_ids - selected_student_ids).delete()
+
+            for student_id in selected_student_ids - current_student_ids:
+                student = User.objects.get(user_id=student_id)
+                try:
+                    tm = TeamMember(team=team, user=student)
+                    tm.full_clean()
+                    tm.save()
+                except ValidationError as e:
+                    error_message = f"Warning: {student.name} is already assigned to another team for this project."
+
+            if not error_message:
+                return redirect('team_management')
+    else:
+        form = TeamForm(instance=team)
+
+    context = {
+        'form': form,
+        'team': team,
+        'user': request.user,
+        'error_message': error_message
+    }
+    return render(request, 'academic/team_edit.html', context)

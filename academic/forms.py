@@ -15,7 +15,6 @@ class ProjectForm(forms.ModelForm):
 
 
 class TeamForm(forms.ModelForm):
-    # This field grabs all students so the instructor can select multiple at once
     members = forms.ModelMultipleChoiceField(
         queryset=User.objects.filter(role='STUDENT'),
         widget=forms.SelectMultiple(attrs={'class': 'w-full px-3 py-2 border rounded-lg', 'size': '5'}),
@@ -30,3 +29,9 @@ class TeamForm(forms.ModelForm):
             'project': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
             'team_name': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg', 'placeholder': 'e.g., VoltShare'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance and self.instance.pk:
+            self.fields['members'].initial = self.instance.members.all()

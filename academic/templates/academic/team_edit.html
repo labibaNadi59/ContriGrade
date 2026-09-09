@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Team - ContriGrade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <nav class="bg-blue-600 p-4 text-white flex justify-between items-center shadow">
+        <h1 class="text-xl font-bold">ContriGrade - Edit Team</h1>
+        <div>
+            <a href="{% url 'team_management' %}" class="mr-4 hover:underline">Back to Teams</a>
+            <form action="{% url 'logout' %}" method="post" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Logout</button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6 max-w-xl">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-lg font-bold mb-4 border-b pb-2">Editing Team: {{ team.team_name }}</h2>
+
+            {% if error_message %}
+                <div class="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm">{{ error_message }}</div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <div class="flex space-x-4 mt-6">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700">
+                        Save Changes
+                    </button>
+                    <a href="{% url 'team_management' %}" class="flex-1 text-center bg-gray-300 text-gray-700 font-bold py-2 rounded-lg hover:bg-gray-400">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
