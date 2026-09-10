@@ -1,74 +1,79 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Team Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 text-gray-900">
-    <nav class="bg-blue-600 p-4 text-white flex justify-between items-center shadow">
-        <h1 class="text-xl font-bold">ContriGrade - Teams</h1>
-        <div>
-            <a href="{% url 'dashboard_redirect' %}" class="mr-4 hover:underline">Back to Dashboard</a>
-            <form action="{% url 'logout' %}" method="post" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Logout</button>
-            </form>
-        </div>
-    </nav>
+{% extends 'academic/base.html' %}
 
-    <div class="container mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+{% block title %}Team Management - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Projects</span>
+</a>
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-users w-5"></i>
+    <span>Teams</span>
+</a>
+<a href="#" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-chart-line w-5"></i>
+    <span>Reports</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold">Team Management</h2>
+        <p class="text-gray-600 text-sm">Create project teams and assign student members.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Team Creation Form -->
-        <div class="bg-white p-6 rounded-lg shadow-md col-span-1 h-fit">
-            <h2 class="text-lg font-bold mb-4 border-b pb-2">Create a New Team</h2>
-
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 col-span-1 h-fit">
+            <h3 class="text-base font-bold mb-4 border-b pb-2">Create a New Team</h3>
+            
             {% if error_message %}
-                <div class="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm">{{ error_message }}</div>
+                <div class="bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 mb-4 text-xs">{{ error_message }}</div>
             {% endif %}
 
             <form method="post">
                 {% csrf_token %}
                 {{ form.as_p }}
-                <button type="submit" class="mt-4 w-full bg-green-600 text-white font-bold py-2 rounded-lg hover:bg-green-700">
-                    Create Team & Assign Students
+                <button type="submit" class="mt-4 w-full bg-green-600 text-white font-bold py-2 text-sm rounded-lg hover:bg-green-700 transition">
+                    Create Team & Assign
                 </button>
             </form>
         </div>
 
         <!-- Team List View -->
-        <div class="bg-white p-6 rounded-lg shadow-md col-span-2">
-            <h2 class="text-lg font-bold mb-4 border-b pb-2">Active Teams</h2>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 col-span-2">
+            <h3 class="text-base font-bold mb-4 border-b pb-2">Active Teams</h3>
             {% if teams %}
-                <div class="grid grid-cols-1 gap-4">
+                <div class="space-y-4">
                     {% for team in teams %}
-                       <!-- Inside your team card loop in team_management.html -->
-<div class="p-4 border rounded-lg bg-gray-50 shadow-sm flex justify-between items-start">
-    <div>
-        <h3 class="font-bold text-blue-600 text-lg">{{ team.team_name }}</h3>
-        <p class="text-sm text-gray-600 mb-2">Project: {{ team.project.title }}</p>
-
-        <h4 class="font-semibold text-sm mt-3 border-b pb-1">Assigned Students:</h4>
-        <ul class="list-disc list-inside text-sm text-gray-700 mt-2">
-            {% for member in team.members.all %}
-                <li>{{ member.name }} ({{ member.email }})</li>
-            {% empty %}
-                <li class="text-gray-400 italic">No students assigned yet.</li>
-            {% endfor %}
-        </ul>
-    </div>
-    <div>
-        <!-- Added Edit Button -->
-        <a href="{% url 'team_edit' team.team_id %}" class="bg-yellow-500 text-white text-sm font-semibold px-3 py-1 rounded hover:bg-yellow-600">
-            Edit Team
-        </a>
-    </div>
-</div>
+                        <div class="p-4 border border-gray-100 rounded-lg bg-gray-50 flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-blue-600 text-base">{{ team.team_name }}</h4>
+                                <p class="text-xs text-gray-600 mb-2">Project: {{ team.project.title }}</p>
+                                
+                                <h5 class="font-semibold text-xs text-gray-700 mt-3 border-b pb-1">Assigned Students:</h5>
+                                <ul class="list-disc list-inside text-xs text-gray-600 mt-2 space-y-1">
+                                    {% for member in team.members.all %}
+                                        <li>{{ member.name }} ({{ member.email }})</li>
+                                    {% empty %}
+                                        <li class="text-gray-400 italic">No students assigned yet.</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div>
+                                <a href="{% url 'team_edit' team.team_id %}" class="bg-yellow-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-yellow-600 transition shadow-sm">
+                                    Edit Team
+                                </a>
+                            </div>
+                        </div>
                     {% endfor %}
                 </div>
             {% else %}
-                <p class="text-gray-500">No teams have been created yet.</p>
+                <p class="text-gray-500 text-sm">No teams have been created yet.</p>
             {% endif %}
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

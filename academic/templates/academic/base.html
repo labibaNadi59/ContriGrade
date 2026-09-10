@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}ContriGrade{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-900 flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between shrink-0">
+        <div>
+            <!-- Logo Area -->
+            <div class="h-16 flex items-center px-6 border-b border-gray-100">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">C</div>
+                    <span class="text-xl font-bold text-blue-600">ContriGrade</span>
+                </div>
+            </div>
+
+            <!-- Role-Based Sidebar Navigation Links -->
+            <nav class="p-4 space-y-1">
+                {% block sidebar_links %}{% endblock %}
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer (Help & Sign Out) -->
+        <div class="p-4 border-t border-gray-100 space-y-2">
+            <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+                <i class="fa-regular fa-circle-question w-5 text-gray-400"></i>
+                <span>Help Center</span>
+            </a>
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="w-full flex items-center space-x-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-arrow-right-from-bracket w-5"></i>
+                    <span>Sign Out</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Top Header Bar -->
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0">
+            <div class="w-96">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                        <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                    </span>
+                    <input type="text" placeholder="Search courses, teams, or students..." class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition">
+                </div>
+            </div>
+
+            <!-- Right Header Icons & Profile -->
+            <div class="flex items-center space-x-4">
+                <button class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+                </button>
+                <button class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+                <div class="flex items-center space-x-3 pl-2 border-l border-gray-200">
+                    <div class="w-9 h-9 bg-blue-100 text-blue-600 font-bold rounded-full flex items-center justify-center">
+                        {{ user.name|make_list|first|default:"U" }}
+                    </div>
+                    <div class="text-left hidden md:block">
+                        <p class="text-sm font-semibold leading-tight">{{ user.name }}</p>
+                        <p class="text-xs text-gray-500">{{ user.get_role_display }}</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Scrollable Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-8 bg-gray-50">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,42 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Course Coordinator Dashboard - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'coordinator_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-layer-group w-5"></i>
+    <span>Overview</span>
+</a>
+<a href="#" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-book w-5"></i>
+    <span>Courses</span>
+</a>
+<a href="#" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-list-check w-5"></i>
+    <span>Rubrics & Policies</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold">Course Oversight & Policies</h2>
+        <p class="text-gray-600 text-sm">Establish assessment standards and monitor practices across sections.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h3 class="text-lg font-bold mb-4 border-b pb-2">Active Courses & Sections</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for section in sections %}
+                <div class="p-4 border rounded-lg bg-gray-50 border-gray-100">
+                    <h4 class="font-bold text-indigo-600">{{ section.course.name }} ({{ section.course.code }})</h4>
+                    <p class="text-sm text-gray-600">Section: {{ section.name }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Instructor: {{ section.instructor.name|default:"Not Assigned" }}</p>
+                </div>
+            {% empty %}
+                <p class="text-gray-500 italic text-sm">No course sections configured by admin yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

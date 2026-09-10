@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
-from .models import Project, Team, TeamMember
+from .models import Project, Team, TeamMember, Course, CourseSection
 from .forms import ProjectForm, TeamForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
@@ -10,13 +10,15 @@ from accounts.models import User
 
 @login_required
 def dashboard_redirect(request):
-    # Route System Admin to their specific dashboard
+    # Route based on role
     if request.user.is_admin:
         return redirect('system_admin_dashboard')
     elif request.user.is_student:
         return redirect('student_dashboard')
+    elif request.user.is_coordinator:
+        return redirect('coordinator_dashboard')
 
-    # For Instructors and Course Coordinators:
+
     if request.method == 'POST':
         form = ProjectForm(request.POST)
         if form.is_valid():
@@ -33,7 +35,6 @@ def dashboard_redirect(request):
         'user': request.user
     }
     return render(request, 'academic/instructor_dashboard.html', context)
-
 
 @student_required
 def student_dashboard(request):
@@ -127,3 +128,20 @@ def team_edit(request, team_id):
         'error_message': error_message
     }
     return render(request, 'academic/team_edit.html', context)
+
+
+@login_required
+def coordinator_dashboard(request):
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
+    # Fetch academic stats or course-wide data for oversight
+    courses = Course.objects.all()
+    sections = CourseSection.objects.all().select_related('course')
+
+    context = {
+        'user': request.user,
+        'courses': courses,
+        'sections': sections,
+    }
+    return render(request, 'academic/coordinator_dashboard.html', context)

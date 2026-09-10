@@ -1,56 +1,56 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>System Administrator Dashboard - ContriGrade</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 text-gray-900">
-    <nav class="bg-gray-900 p-4 text-white flex justify-between items-center shadow">
-        <h1 class="text-xl font-bold">ContriGrade System Administration</h1>
-        <div>
-            <span class="mr-4 text-gray-300">Logged in as: {{ user.name }} (System Admin)</span>
-            <form action="{% url 'logout' %}" method="post" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="bg-red-600 px-3 py-1 rounded hover:bg-red-700">Logout</button>
-            </form>
+{% extends 'academic/base.html' %}
+
+{% block title %}System Administrator Dashboard - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'system_admin_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-server w-5"></i>
+    <span>System Control</span>
+</a>
+<a href="/admin/accounts/user/" target="_blank" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-user-gear w-5"></i>
+    <span>User Management</span>
+</a>
+<a href="/admin/" target="_blank" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-sliders w-5"></i>
+    <span>Django Admin</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold">System Control Center</h2>
+        <p class="text-gray-600 text-sm">Manage user accounts, system-level setups, and external API integrations.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- User & Role Management -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-blue-600">
+            <h3 class="font-bold text-base mb-2">User Accounts & Roles</h3>
+            <p class="text-gray-600 text-xs mb-4">Manage system users, modify permissions, and review account statuses.</p>
+            <a href="/admin/accounts/user/" target="_blank" class="block text-center bg-blue-600 text-white font-semibold py-2 text-sm rounded-lg hover:bg-blue-700 transition">
+                Open User Panel
+            </a>
         </div>
-    </nav>
 
-    <div class="container mx-auto p-6 max-w-5xl">
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold">System Control Center</h2>
-            <p class="text-gray-600">Manage user accounts, system-level setups, and external API integrations.</p>
+        <!-- System-Level Configurations -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-yellow-500">
+            <h3 class="font-bold text-base mb-2">System Configurations</h3>
+            <p class="text-gray-600 text-xs mb-4">Maintain core settings, academic terms, and environment properties.</p>
+            <a href="/admin/" target="_blank" class="block text-center bg-yellow-600 text-white font-semibold py-2 text-sm rounded-lg hover:bg-yellow-700 transition">
+                Open Django Admin
+            </a>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- User & Role Management -->
-            <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-blue-600">
-                <h3 class="font-bold text-lg mb-2">User Accounts & Roles</h3>
-                <p class="text-gray-600 text-sm mb-4">Manage system users, modify permissions, and review account statuses.</p>
-                <a href="/admin/accounts/user/" target="_blank" class="block text-center bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700">
-                    Open User Panel
-                </a>
-            </div>
-
-            <!-- System-Level Configurations -->
-            <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-yellow-500">
-                <h3 class="font-bold text-lg mb-2">System Configurations</h3>
-                <p class="text-gray-600 text-sm mb-4">Maintain core settings, academic terms, and environment properties.</p>
-                <a href="/admin/" target="_blank" class="block text-center bg-yellow-600 text-white font-semibold py-2 rounded hover:bg-yellow-700">
-                    Open Django Admin
-                </a>
-            </div>
-
-            <!-- External Integrations (GitHub/API) -->
-            <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-green-600">
-                <h3 class="font-bold text-lg mb-2">GitHub & API Settings</h3>
-                <p class="text-gray-600 text-sm mb-4">Configure repository tracking webhooks, API tokens, and sync integrations.</p>
-                <span class="block text-center bg-gray-200 text-gray-600 font-semibold py-2 rounded cursor-not-allowed">
-                    Coming in Sprint 2
-                </span>
-            </div>
+        <!-- External Integrations (GitHub/API) -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-green-600">
+            <h3 class="font-bold text-base mb-2">GitHub & API Settings</h3>
+            <p class="text-gray-600 text-xs mb-4">Configure repository tracking webhooks, API tokens, and sync integrations.</p>
+            <span class="block text-center bg-gray-100 text-gray-400 font-semibold py-2 text-sm rounded-lg cursor-not-allowed">
+                Coming in Sprint 2
+            </span>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
