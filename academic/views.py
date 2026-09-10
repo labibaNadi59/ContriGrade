@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection
-from .forms import ProjectForm, TeamForm
+from .forms import ProjectForm, TeamForm ,AssignInstructorForm , CourseSectionForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
 
@@ -135,13 +135,44 @@ def coordinator_dashboard(request):
     if not request.user.is_coordinator:
         return redirect('dashboard_redirect')
 
-    # Fetch academic stats or course-wide data for oversight
+    sections = CourseSection.objects.all().select_related('course', 'instructor')
+    instructors = User.objects.filter(role='INSTRUCTOR')
     courses = Course.objects.all()
-    sections = CourseSection.objects.all().select_related('course')
+
+    section_form = CourseSectionForm()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create_section':
+            section_form = CourseSectionForm(request.POST)
+            if section_form.is_valid():
+                section_form.save()
+                return redirect('coordinator_dashboard')
+
+        elif action == 'update_instructor':
+            section_id = request.POST.get('section_id')
+            instructor_id = request.POST.get('instructor_id')
+            section = get_object_or_404(CourseSection, section_id=section_id)
+
+            if instructor_id:
+                section.instructor = User.objects.get(user_id=instructor_id)
+            else:
+                section.instructor = None
+            section.save()
+            return redirect('coordinator_dashboard')
+
+        elif action == 'delete_section':
+            section_id = request.POST.get('section_id')
+            section = get_object_or_404(CourseSection, section_id=section_id)
+            section.delete()
+            return redirect('coordinator_dashboard')
 
     context = {
         'user': request.user,
-        'courses': courses,
         'sections': sections,
+        'instructors': instructors,
+        'courses': courses,
+        'section_form': section_form,
     }
     return render(request, 'academic/coordinator_dashboard.html', context)

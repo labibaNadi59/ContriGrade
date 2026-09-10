@@ -1,6 +1,8 @@
 from django import forms
 from .models import Project ,Team
 from accounts.models import User
+from .models import CourseSection
+
 class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
@@ -35,3 +37,35 @@ class TeamForm(forms.ModelForm):
 
         if self.instance and self.instance.pk:
             self.fields['members'].initial = self.instance.members.all()
+
+
+class CourseSectionForm(forms.ModelForm):
+    class Meta:
+        model = CourseSection
+        fields = ['course', 'section_name', 'instructor']
+        widgets = {
+            'course': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm bg-white'}),
+            'section_name': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm', 'placeholder': 'e.g. Section C'}),
+            'instructor': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm bg-white'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['instructor'].queryset = User.objects.filter(role='INSTRUCTOR')
+        self.fields['instructor'].required = False
+
+
+class AssignInstructorForm(forms.ModelForm):
+    class Meta:
+        model = CourseSection
+        fields = ['instructor']
+        widgets = {
+            'instructor': forms.Select(attrs={'class': 'w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Restrict choices strictly to users with the INSTRUCTOR role
+        self.fields['instructor'].queryset = User.objects.filter(role='INSTRUCTOR')
+        self.fields['instructor'].required = False
+        self.fields['instructor'].label = ""
