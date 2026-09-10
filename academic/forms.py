@@ -1,5 +1,5 @@
 from django import forms
-from .models import Project ,Team
+from .models import Project, Team, Course
 from accounts.models import User
 from .models import CourseSection
 
@@ -69,3 +69,20 @@ class AssignInstructorForm(forms.ModelForm):
         self.fields['instructor'].queryset = User.objects.filter(role='INSTRUCTOR')
         self.fields['instructor'].required = False
         self.fields['instructor'].label = ""
+
+
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ['course_code', 'course_name', 'coordinator']
+        widgets = {
+            'course_code': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm', 'placeholder': 'e.g. CSE314'}),
+            'course_name': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm', 'placeholder': 'e.g. Software Engineering Lab'}),
+            'coordinator': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm bg-white'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['coordinator'].queryset = User.objects.filter(role='COORDINATOR')
+        self.fields['coordinator'].label = "Course Coordinator"

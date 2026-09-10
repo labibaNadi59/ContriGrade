@@ -1,0 +1,40 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Create Course - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'coordinator_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-layer-group w-5"></i>
+    <span>Overview & Management</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 class="text-xl font-bold mb-4 border-b pb-2">Define New Course</h2>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+                <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+                    <p class="font-bold mb-1">Please correct the error(s) below:</p>
+                    {{ form.errors }}
+                </div>
+            {% endif %}
+
+            {{ form.as_p }}
+
+            <div class="flex space-x-4 mt-6">
+                <button type="submit" class="flex-1 bg-indigo-600 text-white font-bold py-2 text-sm rounded-lg hover:bg-indigo-700 transition">
+                    Save Course
+                </button>
+                <a href="{% url 'coordinator_dashboard' %}" class="flex-1 text-center bg-gray-100 text-gray-700 font-bold py-2 text-sm rounded-lg hover:bg-gray-200 transition">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

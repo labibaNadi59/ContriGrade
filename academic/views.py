@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection
-from .forms import ProjectForm, TeamForm ,AssignInstructorForm , CourseSectionForm
+from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
 
@@ -135,44 +135,77 @@ def coordinator_dashboard(request):
     if not request.user.is_coordinator:
         return redirect('dashboard_redirect')
 
+    courses = Course.objects.all().select_related('coordinator')
     sections = CourseSection.objects.all().select_related('course', 'instructor')
     instructors = User.objects.filter(role='INSTRUCTOR')
-    courses = Course.objects.all()
-
     section_form = CourseSectionForm()
-
-    if request.method == 'POST':
-        action = request.POST.get('action')
-
-        if action == 'create_section':
-            section_form = CourseSectionForm(request.POST)
-            if section_form.is_valid():
-                section_form.save()
-                return redirect('coordinator_dashboard')
-
-        elif action == 'update_instructor':
-            section_id = request.POST.get('section_id')
-            instructor_id = request.POST.get('instructor_id')
-            section = get_object_or_404(CourseSection, section_id=section_id)
-
-            if instructor_id:
-                section.instructor = User.objects.get(user_id=instructor_id)
-            else:
-                section.instructor = None
-            section.save()
-            return redirect('coordinator_dashboard')
-
-        elif action == 'delete_section':
-            section_id = request.POST.get('section_id')
-            section = get_object_or_404(CourseSection, section_id=section_id)
-            section.delete()
-            return redirect('coordinator_dashboard')
 
     context = {
         'user': request.user,
+        'courses': courses,
         'sections': sections,
         'instructors': instructors,
-        'courses': courses,
         'section_form': section_form,
     }
     return render(request, 'academic/coordinator_dashboard.html', context)
+
+@login_required
+def section_create(request):
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
+    if request.method == 'POST':
+        form = CourseSectionForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('coordinator_dashboard')
+    else:
+        form = CourseSectionForm()
+
+    return render(request, 'academic/section_form.html', {'form': form})
+
+
+@login_required
+def section_update_instructor(request, section_id):
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
+    section = get_object_or_404(CourseSection, section_id=section_id)
+    if request.method == 'POST':
+        form = AssignInstructorForm(request.POST, instance=section)
+        if form.is_valid():
+            form.save()
+            return redirect('coordinator_dashboard')
+
+    return redirect('coordinator_dashboard')
+
+
+@login_required
+def section_delete(request, section_id):
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
+    section = get_object_or_404(CourseSection, section_id=section_id)
+    if request.method == 'POST':
+        section.delete()
+
+    return redirect('coordinator_dashboard')
+
+
+@login_required
+def course_create(request):
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
+    if request.method == 'POST':
+        form = CourseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('coordinator_dashboard')
+    else:
+        form = CourseForm()
+        # Optionally pre-fill the coordinator field with the current user if they are a coordinator
+        if request.user.is_coordinator:
+            form.initial['coordinator'] = request.user
+
+    return render(request, 'academic/course_form.html', {'form': form})
