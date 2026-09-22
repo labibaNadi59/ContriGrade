@@ -44,23 +44,18 @@ def dashboard_redirect(request):
     }
     return render(request, 'academic/instructor_dashboard.html', context)
 
+
+@login_required
 @student_required
 def student_dashboard(request):
-
-    membership = TeamMember.objects.filter(user=request.user).select_related('team__project').first()
-
-    teammates = None
-    if membership:
-
-        teammates = membership.team.members.exclude(user_id=request.user.user_id)
+    # Fetch ALL team memberships for this student
+    memberships = TeamMember.objects.filter(user=request.user).select_related('team__project', 'team', 'team__project__section')
 
     context = {
         'user': request.user,
-        'membership': membership,
-        'teammates': teammates
+        'memberships': memberships,
     }
     return render(request, 'academic/student_dashboard.html', context)
-
 
 
 @login_required
@@ -78,19 +73,24 @@ def team_management(request):
         form = TeamForm(request.POST, user=request.user)
         if form.is_valid():
             team = form.save()
-            selected_students = form.cleaned_data['members']
+            selected_students = form.cleaned_data.get('members', [])
 
-            # Assign students one by one so validation runs
+            # Assign students safely using get_or_create and running validation
             for student in selected_students:
                 try:
-                    tm = TeamMember(team=team, user=student)
+                    tm, created = TeamMember.objects.get_or_create(team=team, user=student)
                     tm.full_clean()
                     tm.save()
                 except ValidationError as e:
-                    error_message = f"Warning: {e.message}"
+                    # Safely handle validation error messages
+                    err_msg = e.messages[0] if hasattr(e, 'messages') else str(e)
+                    error_message = f"Warning: {err_msg}"
 
             if not error_message:
                 return redirect('team_management')
+        else:
+            # Prints form errors to your PyCharm terminal if validation fails
+            print("TeamForm Errors:", form.errors)
     else:
         # Pass user=request.user for GET requests too
         form = TeamForm(user=request.user)
