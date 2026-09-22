@@ -3,17 +3,33 @@ from .models import Project, Team, Course
 from accounts.models import User
 from .models import CourseSection
 
+
+
 class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
-        fields = ['section', 'title', 'description', 'deadline']
+        fields = ['title', 'description', 'section', 'deadline']
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg', 'placeholder': 'e.g., Final Capstone'}),
-            'description': forms.Textarea(attrs={'class': 'w-full px-3 py-2 border rounded-lg', 'rows': 3}),
-            'section': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
-
-            'deadline': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'title': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm',
+                                            'placeholder': 'e.g. E-Commerce Platform'}),
+            'description': forms.Textarea(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm', 'rows': 3}),
+            'section': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm bg-white'}),
+            'deadline': forms.DateTimeInput(
+                attrs={'type': 'datetime-local', 'class': 'w-full px-3 py-2 border rounded-lg text-sm'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        # Pop the user passed from the view
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            if user.role == 'INSTRUCTOR':
+                # Restrict sections strictly to those assigned to this instructor by the coordinator
+                self.fields['section'].queryset = CourseSection.objects.filter(instructor=user)
+            elif user.is_coordinator:
+                # Coordinators can view all sections across the board
+                self.fields['section'].queryset = CourseSection.objects.all()
 
 
 class TeamForm(forms.ModelForm):
@@ -33,11 +49,19 @@ class TeamForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # Extract the user passed from the view for authorization filtering
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+
+        # Restrict project choices based on role authorization
+        if user:
+            if user.role == 'INSTRUCTOR':
+                self.fields['project'].queryset = Project.objects.filter(section__instructor=user)
+            elif user.is_coordinator:
+                self.fields['project'].queryset = Project.objects.all()
 
         if self.instance and self.instance.pk:
             self.fields['members'].initial = self.instance.members.all()
-
 
 class CourseSectionForm(forms.ModelForm):
     class Meta:

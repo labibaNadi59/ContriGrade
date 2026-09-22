@@ -10,7 +10,6 @@ from accounts.models import User
 
 @login_required
 def dashboard_redirect(request):
-    # Route based on role
     if request.user.is_admin:
         return redirect('system_admin_dashboard')
     elif request.user.is_student:
@@ -18,16 +17,25 @@ def dashboard_redirect(request):
     elif request.user.is_coordinator:
         return redirect('coordinator_dashboard')
 
-
+    # Strictly for Instructors:
     if request.method == 'POST':
-        form = ProjectForm(request.POST)
+        # Pass request.user into the form initialization
+        form = ProjectForm(request.POST, user=request.user)
         if form.is_valid():
-            form.save()
-            return redirect('dashboard_redirect')
-    else:
-        form = ProjectForm()
+            project = form.save(commit=False)
 
-    projects = Project.objects.all().order_by('-deadline')
+            # Security Check: Double-check that this instructor is assigned to the section
+            if project.section.instructor == request.user:
+                project.save()
+                return redirect('dashboard_redirect')
+            else:
+                form.add_error('section', 'You are not authorized to create a project for a section you do not teach.')
+    else:
+        # Pass request.user here too so the GET form filters properly
+        form = ProjectForm(user=request.user)
+
+    # Instructors should only see projects belonging to their assigned sections
+    projects = Project.objects.filter(section__instructor=request.user).order_by('-deadline')
 
     context = {
         'form': form,
@@ -55,21 +63,28 @@ def student_dashboard(request):
 
 
 
+@login_required
 def team_management(request):
     error_message = None
 
+    # Restrict teams query based on user role
+    if request.user.role == 'INSTRUCTOR':
+        teams = Team.objects.filter(project__section__instructor=request.user).select_related('project')
+    else:
+        teams = Team.objects.all().select_related('project')
+
     if request.method == 'POST':
-        form = TeamForm(request.POST)
+        # Pass user=request.user so the form restricts projects to assigned sections
+        form = TeamForm(request.POST, user=request.user)
         if form.is_valid():
-            # Save the team first
             team = form.save()
             selected_students = form.cleaned_data['members']
 
-            # Now assign the students one by one so our validation rule runs
+            # Assign students one by one so validation runs
             for student in selected_students:
                 try:
                     tm = TeamMember(team=team, user=student)
-                    tm.full_clean()  # This triggers the "one team per project" rule
+                    tm.full_clean()
                     tm.save()
                 except ValidationError as e:
                     error_message = f"Warning: {e.message}"
@@ -77,10 +92,8 @@ def team_management(request):
             if not error_message:
                 return redirect('team_management')
     else:
-        form = TeamForm()
-
-    # Fetch all teams to display on the page
-    teams = Team.objects.all().select_related('project')
+        # Pass user=request.user for GET requests too
+        form = TeamForm(user=request.user)
 
     context = {
         'form': form,
