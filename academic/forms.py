@@ -93,6 +93,12 @@ class AssignInstructorForm(forms.ModelForm):
         self.fields['instructor'].queryset = User.objects.filter(role='INSTRUCTOR')
         self.fields['instructor'].required = False
         self.fields['instructor'].label = ""
+        self.fields['instructor'].empty_label = "-- Select Instructor --"  # <-- This handles empty selections safely
+
+    def clean_instructor(self):
+        instructor = self.cleaned_data.get('instructor')
+        # If the user selected the empty option, ensure it returns None instead of raising an error
+        return instructor if instructor else None
 
 
 class CourseForm(forms.ModelForm):

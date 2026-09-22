@@ -184,11 +184,19 @@ def section_update_instructor(request, section_id):
         return redirect('dashboard_redirect')
 
     section = get_object_or_404(CourseSection, section_id=section_id)
+
     if request.method == 'POST':
-        form = AssignInstructorForm(request.POST, instance=section)
-        if form.is_valid():
-            form.save()
-            return redirect('coordinator_dashboard')
+        instructor_id = request.POST.get('instructor')
+
+        if instructor_id:
+            # Assign the selected instructor using user_id from your User model
+            instructor = User.objects.filter(user_id=instructor_id, role='INSTRUCTOR').first()
+            section.instructor = instructor
+        else:
+            # Clear the instructor safely now that null=True is allowed
+            section.instructor = None
+
+        section.save()
 
     return redirect('coordinator_dashboard')
 

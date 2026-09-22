@@ -27,7 +27,9 @@ class CourseSection(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.RESTRICT,
         related_name='assigned_sections',
-        limit_choices_to={'role': 'INSTRUCTOR'}
+        limit_choices_to={'role': 'INSTRUCTOR'},
+        null=True,
+        blank=True
     )
 
     class Meta:
