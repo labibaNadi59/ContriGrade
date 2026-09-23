@@ -1,0 +1,97 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}User Account Management - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'system_admin_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-server w-5"></i>
+    <span>System Control</span>
+</a>
+<a href="{% url 'admin_user_management' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-user-gear w-5"></i>
+    <span>User Management</span>
+</a>
+<a href="/admin/" target="_blank" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-sliders w-5"></i>
+    <span>Django Admin</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex items-center space-x-3">
+            <a href="{% url 'system_admin_dashboard' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded-lg text-sm font-semibold flex items-center transition" title="Back to Dashboard">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h2 class="text-2xl font-bold text-gray-800">User Account Management</h2>
+        </div>
+        <a href="{% url 'admin_user_create' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">
+            + Create New User
+        </a>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <form method="get" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-col md:flex-row gap-4">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by name or email..." class="flex-1 px-3 py-2 border rounded-lg text-sm">
+        
+        <select name="role" class="px-3 py-2 border rounded-lg text-sm bg-white">
+            <option value="">All Roles</option>
+            {% for key, val in roles %}
+                <option value="{{ key }}" {% if role_filter == key %}selected{% endif %}>{{ val }}</option>
+            {% endfor %}
+        </select>
+        
+        <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-900">Filter</button>
+    </form>
+
+    <!-- Users Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <th class="p-4">Name & Email</th>
+                    <th class="p-4">Role</th>
+                    <th class="p-4">Status</th>
+                    <th class="p-4">Joined Date</th>
+                    <th class="p-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 text-sm">
+                {% for u in users %}
+                    <tr>
+                        <td class="p-4">
+                            <p class="font-semibold text-gray-900">{{ u.name }}</p>
+                            <p class="text-xs text-gray-500">{{ u.email }}</p>
+                        </td>
+                        <td class="p-4">
+                            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700">{{ u.get_role_display }}</span>
+                        </td>
+                        <td class="p-4">
+                            {% if u.is_active %}
+                                <span class="px-2 py-0.5 text-xs font-semibold rounded bg-green-100 text-green-800">Active</span>
+                            {% else %}
+                                <span class="px-2 py-0.5 text-xs font-semibold rounded bg-red-100 text-red-800">Deactivated</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 text-xs text-gray-500">{{ u.created_at|date:"M d, Y" }}</td>
+                        <td class="p-4 text-right space-x-2">
+                            <a href="{% url 'admin_user_update' u.user_id %}" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs">Edit</a>
+                            {% if u != request.user %}
+                                <a href="{% url 'admin_user_toggle_status' u.user_id %}" class="text-red-600 hover:text-red-900 font-semibold text-xs">
+                                    {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="p-6 text-center text-gray-400 italic">No user accounts found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
