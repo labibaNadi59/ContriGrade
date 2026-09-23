@@ -11,4 +11,6 @@ path('coordinator/sections/create/', views.section_create, name='section_create'
     path('coordinator/sections/<int:section_id>/delete/', views.section_delete, name='section_delete'),
     path('teams/', views.team_management, name='team_management'),
     path('teams/<int:team_id>/edit/', views.team_edit, name='team_edit'),
+path('student/memberships/<int:membership_id>/role/', views.update_student_project_role, name='update_student_project_role'),
+
 ]

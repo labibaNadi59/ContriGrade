@@ -85,6 +85,19 @@ class TeamMember(models.Model):
     )
     joined_at = models.DateTimeField(auto_now_add=True)
 
+    # Individual project role & documented responsibilities
+    role_in_team = models.CharField(
+        max_length=120,
+        blank=True,
+        default='',
+        verbose_name="Individual Project Role"
+    )
+    responsibilities = models.TextField(
+        blank=True,
+        default='',
+        verbose_name="Documented Responsibilities"
+    )
+
     class Meta:
         unique_together = ('team', 'user')
 

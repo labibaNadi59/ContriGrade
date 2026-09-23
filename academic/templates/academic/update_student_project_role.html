@@ -1,0 +1,109 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Update Project Role - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'student_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-house-laptop w-5"></i>
+    <span>Assessment Hub</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-4">
+        <a href="{% url 'student_dashboard' %}" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 transition">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Back to Assessment Hub
+        </a>
+    </div>
+
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200">
+        <div class="border-b border-gray-100 pb-4 mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Project Role & Responsibilities</h2>
+            <div class="flex items-center gap-3 mt-2 text-xs font-medium text-gray-500">
+                <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md">
+                    {{ membership.team.project.title }}
+                </span>
+                <span>&bull;</span>
+                <span class="text-gray-700">Team: <strong>{{ membership.team.team_name }}</strong></span>
+            </div>
+        </div>
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <!-- Dropdown Role Selection -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    {{ form.role_choice.label }}
+                </label>
+                {{ form.role_choice }}
+                {% if form.role_choice.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.role_choice.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Custom Role Field (Visible only when 'Other' selected) -->
+            <div id="custom-role-container" class="{% if form.role_choice.value != 'Other' %}hidden{% endif %}">
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    {{ form.custom_role.label }}
+                </label>
+                {{ form.custom_role }}
+                {% if form.custom_role.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.custom_role.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Responsibilities -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    {{ form.responsibilities.label }}
+                </label>
+                {{ form.responsibilities }}
+                {% if form.responsibilities.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.responsibilities.errors.0 }}</p>
+                {% endif %}
+                <p class="text-xs text-gray-400 mt-1">
+                    Documented responsibilities will be referenced by teammates during peer evaluations.
+                </p>
+            </div>
+
+            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100">
+                <a href="{% url 'student_dashboard' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
+                    Cancel
+                </a>
+                <button type="submit" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">
+                    Save Role Details
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const roleSelect = document.getElementById('id_role_choice');
+        const customContainer = document.getElementById('custom-role-container');
+        const customInput = document.getElementById('id_custom_role');
+
+        function toggleCustomField() {
+            if (roleSelect.value === 'Other') {
+                customContainer.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                customContainer.classList.add('hidden');
+            }
+        }
+
+        roleSelect.addEventListener('change', toggleCustomField);
+        toggleCustomField();
+    });
+</script>
+{% endblock %}
+
