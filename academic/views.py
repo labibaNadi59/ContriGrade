@@ -1,9 +1,10 @@
+from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection
-from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm
+from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
 
@@ -230,3 +231,23 @@ def course_create(request):
             form.initial['coordinator'] = request.user
 
     return render(request, 'academic/course_form.html', {'form': form})
+
+
+@login_required
+def update_student_project_role(request, membership_id):
+    # Strict ownership check: student can only edit their own role
+    membership = get_object_or_404(TeamMember, pk=membership_id, user=request.user)
+
+    if request.method == 'POST':
+        form = StudentProjectRoleForm(request.POST, instance=membership)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Updated role and responsibilities for {membership.team.project.title}.")
+            return redirect('student_dashboard')
+    else:
+        form = StudentProjectRoleForm(instance=membership)
+
+    return render(request, 'academic/update_student_project_role.html', {
+        'form': form,
+        'membership': membership,
+    })
