@@ -27,3 +27,39 @@ class SignUpForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class AdminUserCreationForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}))
+
+    class Meta:
+        model = User
+        fields = ['email', 'name', 'role', 'password', 'is_active']
+        widgets = {
+            'email': forms.EmailInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'name': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'role': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-blue-600 border-gray-300 rounded'}),
+        }
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+        return user
+
+
+class AdminUserUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['email', 'name', 'role', 'is_active']
+        widgets = {
+            'email': forms.EmailInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'name': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'role': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-blue-600 border-gray-300 rounded'}),
+        }
+
+
+

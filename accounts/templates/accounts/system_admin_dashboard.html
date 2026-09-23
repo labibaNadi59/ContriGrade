@@ -7,7 +7,7 @@
     <i class="fa-solid fa-server w-5"></i>
     <span>System Control</span>
 </a>
-<a href="/admin/accounts/user/" target="_blank" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+<a href="{% url 'admin_user_management' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
     <i class="fa-solid fa-user-gear w-5"></i>
     <span>User Management</span>
 </a>
@@ -26,27 +26,33 @@
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- User & Role Management -->
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-blue-600">
-            <h3 class="font-bold text-base mb-2">User Accounts & Roles</h3>
-            <p class="text-gray-600 text-xs mb-4">Manage system users, modify permissions, and review account statuses.</p>
-            <a href="/admin/accounts/user/" target="_blank" class="block text-center bg-blue-600 text-white font-semibold py-2 text-sm rounded-lg hover:bg-blue-700 transition">
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-blue-600 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-base mb-2">User Accounts & Roles</h3>
+                <p class="text-gray-600 text-xs mb-4">Manage system users, modify permissions, and review account statuses.</p>
+            </div>
+            <a href="{% url 'admin_user_management' %}" class="block text-center bg-blue-600 text-white font-semibold py-2 text-sm rounded-lg hover:bg-blue-700 transition">
                 Open User Panel
             </a>
         </div>
 
         <!-- System-Level Configurations -->
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-yellow-500">
-            <h3 class="font-bold text-base mb-2">System Configurations</h3>
-            <p class="text-gray-600 text-xs mb-4">Maintain core settings, academic terms, and environment properties.</p>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-yellow-500 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-base mb-2">System Configurations</h3>
+                <p class="text-gray-600 text-xs mb-4">Maintain core settings, academic terms, and environment properties.</p>
+            </div>
             <a href="/admin/" target="_blank" class="block text-center bg-yellow-600 text-white font-semibold py-2 text-sm rounded-lg hover:bg-yellow-700 transition">
                 Open Django Admin
             </a>
         </div>
 
         <!-- External Integrations (GitHub/API) -->
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-green-600">
-            <h3 class="font-bold text-base mb-2">GitHub & API Settings</h3>
-            <p class="text-gray-600 text-xs mb-4">Configure repository tracking webhooks, API tokens, and sync integrations.</p>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-green-600 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-base mb-2">GitHub & API Settings</h3>
+                <p class="text-gray-600 text-xs mb-4">Configure repository tracking webhooks, API tokens, and sync integrations.</p>
+            </div>
             <span class="block text-center bg-gray-100 text-gray-400 font-semibold py-2 text-sm rounded-lg cursor-not-allowed">
                 Coming in Sprint 2
             </span>
