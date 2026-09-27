@@ -3,9 +3,15 @@
 {% block title %}Student Dashboard - ContriGrade{% endblock %}
 
 {% block sidebar_links %}
+<!-- Active state for Assessment Hub -->
 <a href="{% url 'student_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
     <i class="fa-solid fa-house-chimney w-5"></i>
     <span>Assessment Hub</span>
+</a>
+<!-- Inactive state for Courses -->
+<a href="{% url 'student_courses' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition">
+    <i class="fa-solid fa-book w-5"></i>
+    <span>My Courses</span>
 </a>
 {% endblock %}
 
@@ -91,4 +97,3 @@
     {% endif %}
 </div>
 {% endblock %}
-

@@ -1,4 +1,6 @@
 from django import forms
+from django.contrib.auth import get_user_model
+
 from .models import Project, Team, Course, TeamMember
 from accounts.models import User
 from .models import CourseSection
@@ -32,11 +34,14 @@ class ProjectForm(forms.ModelForm):
                 self.fields['section'].queryset = CourseSection.objects.all()
 
 
+User = get_user_model()
+
+
 class TeamForm(forms.ModelForm):
     members = forms.ModelMultipleChoiceField(
-        queryset=User.objects.filter(role='STUDENT'),
+        queryset=User.objects.filter(role='STUDENT'),  # Default fallback
         widget=forms.SelectMultiple(attrs={'class': 'w-full px-3 py-2 border rounded-lg', 'size': '5'}),
-        help_text="Hold Ctrl (or Cmd) to select multiple students.",
+        help_text="Hold Ctrl (or Cmd) to select multiple students. Only students enrolled in the section will appear.",
         required=False
     )
 
@@ -45,23 +50,40 @@ class TeamForm(forms.ModelForm):
         fields = ['project', 'team_name']
         widgets = {
             'project': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
-            'team_name': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg', 'placeholder': 'e.g., VoltShare'}),
+            'team_name': forms.TextInput(
+                attrs={'class': 'w-full px-3 py-2 border rounded-lg', 'placeholder': 'e.g., VoltShare'}),
         }
 
     def __init__(self, *args, **kwargs):
-        # Extract the user passed from the view for authorization filtering
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Restrict project choices based on role authorization
+        # 1. Restrict Project Choices
         if user:
             if user.role == 'INSTRUCTOR':
                 self.fields['project'].queryset = Project.objects.filter(section__instructor=user)
             elif user.is_coordinator:
                 self.fields['project'].queryset = Project.objects.all()
 
-        if self.instance and self.instance.pk:
+        # 2. Dynamic Student Member Filtering
+        if 'project' in self.data:
+            # If form was submitted (POST), lock dropdown to students of the chosen project's section
+            try:
+                project_id = int(self.data.get('project'))
+                project = Project.objects.get(pk=project_id)
+                self.fields['members'].queryset = project.section.students.all()
+            except (ValueError, TypeError, Project.DoesNotExist):
+                pass
+
+        elif self.instance and self.instance.pk:
+            # If editing an existing team, only show students in that project's section
+            self.fields['members'].queryset = self.instance.project.section.students.all()
             self.fields['members'].initial = self.instance.members.all()
+
+        elif user and user.role == 'INSTRUCTOR':
+            # Default GET state for instructors: Only show students enrolled in *any* of their assigned sections
+            self.fields['members'].queryset = User.objects.filter(enrolled_sections__instructor=user).distinct()
+
 
 class CourseSectionForm(forms.ModelForm):
     class Meta:
@@ -200,3 +222,31 @@ class StudentProjectRoleForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class StudentEnrollmentForm(forms.Form):
+    section = forms.ModelChoiceField(
+        queryset=None,
+        empty_label="-- Select a Course Section to Join --",
+        widget=forms.Select(attrs={
+            'class': 'flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none',
+            'required': True
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        # Extract the user to filter the dropdown
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        from .models import CourseSection
+        qs = CourseSection.objects.select_related('course', 'instructor')
+
+        if user:
+            # Find all courses the student is already in, and exclude them from the dropdown
+            enrolled_course_ids = user.enrolled_sections.values_list('course_id', flat=True)
+            qs = qs.exclude(course_id__in=enrolled_course_ids)
+
+        self.fields['section'].queryset = qs
+        self.fields['section'].label_from_instance = lambda \
+            obj: f"{obj.course.course_code} - {obj.section_name} (Inst: {obj.instructor.name if obj.instructor else 'TBA'})"

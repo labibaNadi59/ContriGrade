@@ -11,6 +11,10 @@ path('coordinator/sections/create/', views.section_create, name='section_create'
     path('coordinator/sections/<int:section_id>/delete/', views.section_delete, name='section_delete'),
     path('teams/', views.team_management, name='team_management'),
     path('teams/<int:team_id>/edit/', views.team_edit, name='team_edit'),
-path('student/memberships/<int:membership_id>/role/', views.update_student_project_role, name='update_student_project_role'),
+
+path('student/', views.student_dashboard, name='student_dashboard'),
+path('student/courses/', views.student_courses, name='student_courses'),
+    path('student/enroll/', views.enroll_in_section, name='enroll_in_section'),
+    path('student/memberships/<int:membership_id>/role/', views.update_student_project_role, name='update_student_project_role'),
 
 ]

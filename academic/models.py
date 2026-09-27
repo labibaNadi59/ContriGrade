@@ -21,7 +21,7 @@ class Course(models.Model):
 
 class CourseSection(models.Model):
     section_id = models.AutoField(primary_key=True)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
+    course = models.ForeignKey('Course', on_delete=models.CASCADE, related_name='sections')
     section_name = models.CharField(max_length=50, help_text="e.g. Section A, Section B")
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -31,13 +31,19 @@ class CourseSection(models.Model):
         null=True,
         blank=True
     )
+    #Link students directly to the section
+    students = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        limit_choices_to={'role': 'STUDENT'},
+        related_name='enrolled_sections',
+        blank=True
+    )
 
     class Meta:
         unique_together = ('course', 'section_name')
 
     def __str__(self):
         return f"{self.course.course_code} - {self.section_name}"
-
 
 class Project(models.Model):
     project_id = models.AutoField(primary_key=True)
@@ -77,40 +83,33 @@ class Team(models.Model):
 
 
 class TeamMember(models.Model):
-    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    team = models.ForeignKey('Team', on_delete=models.CASCADE)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         limit_choices_to={'role': 'STUDENT'}
     )
     joined_at = models.DateTimeField(auto_now_add=True)
-
-    # Individual project role & documented responsibilities
-    role_in_team = models.CharField(
-        max_length=120,
-        blank=True,
-        default='',
-        verbose_name="Individual Project Role"
-    )
-    responsibilities = models.TextField(
-        blank=True,
-        default='',
-        verbose_name="Documented Responsibilities"
-    )
+    role_in_team = models.CharField(max_length=120, blank=True, default='', verbose_name="Individual Project Role")
+    responsibilities = models.TextField(blank=True, default='', verbose_name="Documented Responsibilities")
 
     class Meta:
         unique_together = ('team', 'user')
 
     def clean(self):
-        # Task T4.2 rule: A student can belong to only ONE team per project
+        # One team per project
         existing_membership = TeamMember.objects.filter(
             team__project=self.team.project,
             user=self.user
         ).exclude(pk=self.pk)
 
         if existing_membership.exists():
+            raise ValidationError(f"{self.user.name} is already assigned to a team in this project.")
+
+        # Student MUST be enrolled in the section to join a team
+        if not self.team.project.section.students.filter(pk=self.user.pk).exists():
             raise ValidationError(
-                f"{self.user.name} is already assigned to a team in this project."
+                f"Security block: {self.user.name} cannot be assigned to this team because they are not enrolled in {self.team.project.section}."
             )
 
     def save(self, *args, **kwargs):

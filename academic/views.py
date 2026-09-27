@@ -4,7 +4,8 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection
-from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm
+from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
+    StudentEnrollmentForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
 
@@ -46,18 +47,50 @@ def dashboard_redirect(request):
     return render(request, 'academic/instructor_dashboard.html', context)
 
 
+# academic/views.py
+
 @login_required
 @student_required
 def student_dashboard(request):
-    # Fetch ALL team memberships for this student
-    memberships = TeamMember.objects.filter(user=request.user).select_related('team__project', 'team', 'team__project__section')
-
-    context = {
+    # Assessment Hub
+    memberships = TeamMember.objects.filter(user=request.user).select_related(
+        'team__project__section__course'
+    )
+    return render(request, 'academic/student_dashboard.html', {
         'user': request.user,
         'memberships': memberships,
-    }
-    return render(request, 'academic/student_dashboard.html', context)
+    })
 
+
+@login_required
+@student_required
+def student_courses(request):
+    # My Enrolled Courses
+    my_sections = CourseSection.objects.filter(students=request.user).select_related('course', 'instructor')
+
+
+    enroll_form = StudentEnrollmentForm(user=request.user)
+
+    return render(request, 'academic/student_courses.html', {
+        'my_sections': my_sections,
+        'enroll_form': enroll_form,
+    })
+
+
+@login_required
+@student_required
+def enroll_in_section(request):
+    # Process enrollment and redirect back to the Courses page
+    if request.method == 'POST':
+        form = StudentEnrollmentForm(request.POST, user=request.user)
+        if form.is_valid():
+            section = form.cleaned_data['section']
+
+            section.students.add(request.user)
+            messages.success(request,
+                             f"Successfully enrolled in {section.course.course_code} - {section.section_name}.")
+
+    return redirect('student_courses')
 
 @login_required
 def team_management(request):
