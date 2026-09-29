@@ -74,6 +74,12 @@ class Team(models.Model):
         through='TeamMember',
         related_name='student_teams'
     )
+    github_repo_url = models.URLField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Format: https://github.com/username/repository"
+    )
 
     class Meta:
         unique_together = ('project', 'team_name')

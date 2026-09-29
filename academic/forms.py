@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from .models import Project, Team, Course, TeamMember
 from accounts.models import User
 from .models import CourseSection
+from .utils import validate_github_repo_url
 
 
 
@@ -250,3 +251,35 @@ class StudentEnrollmentForm(forms.Form):
         self.fields['section'].queryset = qs
         self.fields['section'].label_from_instance = lambda \
             obj: f"{obj.course.course_code} - {obj.section_name} (Inst: {obj.instructor.name if obj.instructor else 'TBA'})"
+
+
+
+
+
+class TeamRepoForm(forms.ModelForm):
+    class Meta:
+        model = Team
+        fields = ['github_repo_url']
+        widgets = {
+            'github_repo_url': forms.URLInput(attrs={
+                'class': 'w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition',
+                'placeholder': 'https://github.com/username/repository'
+            })
+        }
+        labels = {
+            'github_repo_url': 'GitHub Repository URL'
+        }
+
+    def clean_github_repo_url(self):
+        url = self.cleaned_data.get('github_repo_url')
+        if url:
+            # Run our API validation utility!
+            validation = validate_github_repo_url(url)
+
+            if not validation['valid']:
+                # If GitHub says it's invalid/not found, raise a form error instantly
+                raise forms.ValidationError(validation['error'])
+
+            # Return the cleaned version of the URL (without .git at the end)
+            return validation['clean_url']
+        return url

@@ -1,5 +1,8 @@
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+
+from academic.utils import validate_github_connection
 from .forms import SignUpForm , AdminUserCreationForm, AdminUserUpdateForm
 from django.db.models import Q
 from .models import User
@@ -99,8 +102,22 @@ def admin_user_toggle_status(request, user_id):
     return redirect('admin_user_management')
 
 
+@login_required
+def system_api_settings(request):
+    # Ensure only admins can access this
+    if request.user.role != 'ADMIN':
+        return redirect('login')
 
+    connection_status = None
 
+    # If the admin clicks the "Test Connection" button
+    if request.method == 'POST' and 'test_connection' in request.POST:
+        connection_status = validate_github_connection()
+
+    return render(request, 'accounts/api_settings.html', {
+        'token_configured': bool(settings.GITHUB_API_TOKEN),
+        'connection_status': connection_status,
+    })
 
 
 

@@ -16,5 +16,6 @@ path('student/', views.student_dashboard, name='student_dashboard'),
 path('student/courses/', views.student_courses, name='student_courses'),
     path('student/enroll/', views.enroll_in_section, name='enroll_in_section'),
     path('student/memberships/<int:membership_id>/role/', views.update_student_project_role, name='update_student_project_role'),
+path('student/team/<int:team_id>/repo/', views.update_team_repo, name='update_team_repo'),
 
 ]

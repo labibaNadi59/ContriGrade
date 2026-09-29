@@ -1,0 +1,64 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}API Settings - ContriGrade{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">System API Settings</h2>
+            <p class="text-gray-600 text-sm">Manage global integrations and validate connections.</p>
+        </div>
+        <a href="{% url 'system_admin_dashboard' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition">
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- GitHub Integration Card -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex items-start justify-between">
+            <div class="flex items-center space-x-4">
+                <i class="fa-brands fa-github text-4xl text-gray-800"></i>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">GitHub API Integration</h3>
+                    <p class="text-sm text-gray-500">Used to fetch repository commits, PRs, and calculate student contributions.</p>
+                </div>
+            </div>
+            
+            {% if token_configured %}
+                <span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-200">
+                    Token Configured in .env
+                </span>
+            {% else %}
+                <span class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full border border-red-200">
+                    Missing Token
+                </span>
+            {% endif %}
+        </div>
+
+        <div class="p-6 bg-gray-50 space-y-4">
+            <!-- Display Validation Results -->
+            {% if connection_status %}
+                <div class="p-4 rounded-lg border text-sm font-semibold 
+                    {% if connection_status.status == 'success' %} bg-green-50 border-green-200 text-green-800 
+                    {% else %} bg-red-50 border-red-200 text-red-800 {% endif %}">
+                    <div class="flex items-center">
+                        <i class="fa-solid {% if connection_status.status == 'success' %}fa-check-circle{% else %}fa-triangle-exclamation{% endif %} mr-2"></i>
+                        {{ connection_status.message }}
+                    </div>
+                    {% if connection_status.rate_limit %}
+                        <p class="mt-2 text-xs text-green-600 font-medium">API Calls Remaining: {{ connection_status.rate_limit }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <form method="post" class="flex justify-end">
+                {% csrf_token %}
+                <button type="submit" name="test_connection" class="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-semibold transition flex items-center">
+                    <i class="fa-solid fa-satellite-dish mr-2"></i> Test Connection
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

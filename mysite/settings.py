@@ -133,3 +133,13 @@ MAILERS = {
 AUTH_USER_MODEL = 'accounts.User'
 LOGIN_REDIRECT_URL = 'dashboard_redirect'
 LOGOUT_REDIRECT_URL = 'login'
+
+#-----------------Github api----
+import os
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+# GitHub API Configuration
+GITHUB_API_TOKEN = os.getenv('GITHUB_API_TOKEN')

@@ -36,6 +36,27 @@
 
                     <p class="text-gray-600 text-sm mb-5">Section: {{ membership.team.project.section }}</p>
 
+                    <!-- Team GitHub Repository Section -->
+<div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+        <i class="fa-brands fa-github text-2xl {% if membership.team.github_repo_url %}text-gray-800{% else %}text-gray-400{% endif %}"></i>
+        <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-0.5">Team Repository</span>
+            {% if membership.team.github_repo_url %}
+                <a href="{{ membership.team.github_repo_url }}" target="_blank" class="text-sm font-bold text-blue-600 hover:underline">
+                    {{ membership.team.github_repo_url|cut:"https://github.com/" }}
+                </a>
+            {% else %}
+                <span class="text-sm font-semibold text-gray-500 italic">No repository linked yet.</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <a href="{% url 'update_team_repo' membership.team.pk %}" class="inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-100 transition shadow-sm">
+        <i class="fa-solid fa-link mr-1.5"></i>
+        {% if membership.team.github_repo_url %}Update Repo{% else %}Link Repo{% endif %}
+    </a>
+</div>
                     <!-- Individual Role & Responsibilities Section -->
                     <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-5">
                         <div class="flex justify-between items-center pb-2 mb-3 border-b border-slate-200">

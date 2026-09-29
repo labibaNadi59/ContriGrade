@@ -1,0 +1,60 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Link Repository - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'student_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-house-laptop w-5"></i>
+    <span>Assessment Hub</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-4">
+        <a href="{% url 'student_dashboard' %}" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-blue-600 transition">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Back to Assessment Hub
+        </a>
+    </div>
+
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200">
+        <div class="border-b border-gray-100 pb-4 mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Link GitHub Repository</h2>
+            <div class="flex items-center gap-3 mt-2 text-xs font-medium text-gray-500">
+                <span class="text-gray-700">Team: <strong>{{ team.team_name }}</strong></span>
+                <span>&bull;</span>
+                <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md">
+                    {{ team.project.title }}
+                </span>
+            </div>
+        </div>
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    {{ form.github_repo_url.label }}
+                </label>
+                {{ form.github_repo_url }}
+                {% if form.github_repo_url.errors %}
+                    <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.github_repo_url.errors.0 }}</p>
+                {% endif %}
+                <p class="text-xs text-gray-500 mt-2">
+                    <i class="fa-solid fa-circle-info mr-1"></i> The repository must be public or accessible by the system API token. 
+                    Submitting this will automatically verify the repository connection.
+                </p>
+            </div>
+
+            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100">
+                <a href="{% url 'student_dashboard' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
+                    Cancel
+                </a>
+                <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                    Validate & Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

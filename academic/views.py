@@ -5,10 +5,35 @@ from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
-    StudentEnrollmentForm
+    StudentEnrollmentForm, TeamRepoForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
 
+
+@login_required
+@student_required
+def update_team_repo(request, team_id):
+    # 1. Security check: Get the team, and verify the current user is a member!
+    team = get_object_or_404(Team, pk=team_id)
+    is_member = TeamMember.objects.filter(team=team, user=request.user).exists()
+
+    if not is_member:
+        messages.error(request, "Security block: You can only link repositories for your own team.")
+        return redirect('student_dashboard')
+
+    if request.method == 'POST':
+        form = TeamRepoForm(request.POST, instance=team)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Successfully linked GitHub repository for team '{team.team_name}'.")
+            return redirect('student_dashboard')
+    else:
+        form = TeamRepoForm(instance=team)
+
+    return render(request, 'academic/update_team_repo.html', {
+        'form': form,
+        'team': team
+    })
 
 @login_required
 def dashboard_redirect(request):
@@ -47,7 +72,7 @@ def dashboard_redirect(request):
     return render(request, 'academic/instructor_dashboard.html', context)
 
 
-# academic/views.py
+
 
 @login_required
 @student_required
