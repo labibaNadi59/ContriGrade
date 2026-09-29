@@ -5,6 +5,7 @@ from datetime import datetime
 from .models import TeamMember
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
+from django.core.cache import cache
 
 def validate_github_connection():
     """Pings the GitHub API to verify the token is valid and active."""
@@ -106,13 +107,21 @@ def fetch_deep_commit_stats(commit_info, owner, repo, headers):
     return commit_info
 
 
-def fetch_team_commits(team):
+def fetch_team_commits(team, force_refresh=False):
     """
     Fetches up to 100 recent commits and uses multithreading to rapidly
     gather Lines of Code (LOC) stats in parallel.
     """
     if not team.github_repo_url:
         return {"status": "error", "message": "No repository linked to this team."}
+
+    cache_key = f"team_{team.pk}_github_commits"
+
+    # Check if we already have this data saved in memory
+    if not force_refresh:
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return cached_data
 
     pattern = r'^https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/?$'
     match = re.match(pattern, team.github_repo_url)
@@ -170,11 +179,16 @@ def fetch_team_commits(team):
     # Sort them back into chronological order (since threads finish at random times)
     final_commits.sort(key=lambda x: x['date'], reverse=True)
 
-    return {
+    result = {
         "status": "success",
         "total_commits": len(final_commits),
         "commits": final_commits
     }
+
+    # Save the final result to the memory cache for 1 hour (3600 seconds)
+    cache.set(cache_key, result, timeout=3600)
+
+    return result
 
 
 

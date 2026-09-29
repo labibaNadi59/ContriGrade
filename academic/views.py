@@ -9,7 +9,8 @@ from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionFor
 from django.shortcuts import get_object_or_404
 from accounts.models import User
 from .utils import fetch_team_commits, analyze_team_contributions
-
+import csv
+from django.http import HttpResponse
 
 @login_required
 def project_master_report(request, project_id):
@@ -28,11 +29,13 @@ def project_master_report(request, project_id):
     project_total_commits = 0
     teams_with_repos = 0
 
+    # Check if the user clicked the refresh button
+    force_refresh = request.GET.get('refresh') == 'true'
     # Aggregate data from all teams
     for team in teams:
         if team.github_repo_url:
             teams_with_repos += 1
-            fetch_result = fetch_team_commits(team)
+            fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
 
             if fetch_result['status'] == 'success':
                 analytics = analyze_team_contributions(team, fetch_result['commits'])
@@ -53,6 +56,39 @@ def project_master_report(request, project_id):
     # Sort students by highest commit count by default
     master_data.sort(key=lambda x: x['commit_count'], reverse=True)
 
+    # Intercept the request and generate a CSV if requested ---
+    if request.GET.get('export') == 'csv':
+        # Tell the browser this is a CSV file download
+        response = HttpResponse(content_type='text/csv')
+
+        # Clean the project title to make a nice filename (e.g., "Web_Dev_101_Grades.csv")
+        safe_title = project.title.replace(' ', '_').replace('/', '-')
+        response['Content-Disposition'] = f'attachment; filename="{safe_title}_Report.csv"'
+
+        writer = csv.writer(response)
+
+        # Write the Header Row
+        writer.writerow(['Student Name', 'GitHub Username', 'Team', 'Role', 'Commits', 'Lines Added', 'Lines Deleted',
+                         'Integrity Flags'])
+
+        # Write the Data Rows
+        for student in master_data:
+            # Combine the orange flags into a single readable string, or write 'Clean'
+            flags_str = " | ".join(student.get('flags', [])) if student.get('flags') else "Clean"
+
+            writer.writerow([
+                student['name'],
+                student['github_username'] or 'No GitHub ID',
+                student['team_name'],
+                student['role'] or 'Unassigned',
+                student['commit_count'],
+                student.get('total_additions', 0),
+                student.get('total_deletions', 0),
+                flags_str
+            ])
+
+        return response
+    # -----------------------------------------------------------------
     return render(request, 'academic/master_report.html', {
         'project': project,
         'master_data': master_data,
@@ -90,11 +126,13 @@ def team_analytics_dashboard(request, team_id):
     error_message = None
 
     recent_commits = []
+    # Check if the user clicked the refresh button
+    force_refresh = request.GET.get('refresh') == 'true'
     if not team.github_repo_url:
         error_message = "This team has not linked a GitHub repository yet."
     else:
-        # 1. Fetch raw commits
-        fetch_result = fetch_team_commits(team)
+        # 1. Pass the force_refresh flag to the fetcher
+        fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
 
         if fetch_result['status'] == 'success':
             recent_commits = fetch_result['commits'][:15]
