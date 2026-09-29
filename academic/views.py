@@ -10,6 +10,74 @@ from django.shortcuts import get_object_or_404
 from accounts.models import User
 from .utils import fetch_team_commits, analyze_team_contributions
 
+
+@login_required
+def project_master_report(request, project_id):
+    if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
+        messages.error(request, "Access denied. Instructor privileges required.")
+        return redirect('student_dashboard')
+
+    if request.user.role in ['ADMIN', 'COORDINATOR']:
+        project = get_object_or_404(Project, pk=project_id)
+    else:
+        project = get_object_or_404(Project, pk=project_id, section__instructor=request.user)
+
+    teams = project.teams.all()
+
+    master_data = []
+    project_total_commits = 0
+    teams_with_repos = 0
+
+    # Aggregate data from all teams
+    for team in teams:
+        if team.github_repo_url:
+            teams_with_repos += 1
+            fetch_result = fetch_team_commits(team)
+
+            if fetch_result['status'] == 'success':
+                analytics = analyze_team_contributions(team, fetch_result['commits'])
+                project_total_commits += analytics['total_commits']
+
+                for pk, student in analytics['mapped_students'].items():
+                    master_data.append({
+                        'name': student['name'],
+                        'team_name': team.team_name,
+                        'github_username': student['github_username'],
+                        'role': student['role'],
+                        'commit_count': student['commit_count'],
+                        'total_additions': student.get('total_additions', 0),
+                        'total_deletions': student.get('total_deletions', 0),
+                        'flags': student.get('flags', [])
+                    })
+
+    # Sort students by highest commit count by default
+    master_data.sort(key=lambda x: x['commit_count'], reverse=True)
+
+    return render(request, 'academic/master_report.html', {
+        'project': project,
+        'master_data': master_data,
+        'total_teams': teams.count(),
+        'teams_with_repos': teams_with_repos,
+        'project_total_commits': project_total_commits
+    })
+
+
+@login_required
+def reports_hub(request):
+    if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
+        messages.error(request, "Access denied.")
+        return redirect('student_dashboard')
+
+    if request.user.role in ['ADMIN', 'COORDINATOR']:
+        projects = Project.objects.all()
+    else:
+        #  Jump through the 'section' to check the instructor
+        projects = Project.objects.filter(section__instructor=request.user)
+
+    return render(request, 'academic/reports_hub.html', {
+        'projects': projects
+    })
+
 @login_required
 def team_analytics_dashboard(request, team_id):
     # Security: Ensure only instructors or admins can access this page
@@ -21,6 +89,7 @@ def team_analytics_dashboard(request, team_id):
     analytics_data = None
     error_message = None
 
+    recent_commits = []
     if not team.github_repo_url:
         error_message = "This team has not linked a GitHub repository yet."
     else:
@@ -28,6 +97,7 @@ def team_analytics_dashboard(request, team_id):
         fetch_result = fetch_team_commits(team)
 
         if fetch_result['status'] == 'success':
+            recent_commits = fetch_result['commits'][:15]
             # 2. Map commits to students
             analytics_data = analyze_team_contributions(team, fetch_result['commits'])
 
@@ -45,6 +115,7 @@ def team_analytics_dashboard(request, team_id):
     return render(request, 'academic/team_analytics.html', {
         'team': team,
         'analytics': analytics_data,
+        'recent_commits': recent_commits,  # NEW
         'error_message': error_message
     })
 
