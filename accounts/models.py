@@ -37,7 +37,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
-
+    github_username = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Your exact GitHub username. Required to track your project contributions."
+    )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

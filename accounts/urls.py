@@ -13,5 +13,7 @@ path('management/users/', views.admin_user_management, name='admin_user_manageme
     path('management/users/<int:user_id>/toggle/', views.admin_user_toggle_status, name='admin_user_toggle_status'),
 
 path('management/api-settings/', views.system_api_settings, name='system_api_settings'),
+
+path('profile/', views.profile_settings, name='profile_settings'),
 ]
 

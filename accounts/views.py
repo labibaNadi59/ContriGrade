@@ -1,13 +1,33 @@
 from django.conf import settings
+from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 
 from academic.utils import validate_github_connection
-from .forms import SignUpForm , AdminUserCreationForm, AdminUserUpdateForm
+from .forms import SignUpForm, AdminUserCreationForm, AdminUserUpdateForm, ProfileUpdateForm
 from django.db.models import Q
 from .models import User
 
 
+@login_required
+def profile_settings(request):
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your profile settings have been updated successfully.")
+
+            # Redirect based on role
+            if request.user.role == 'STUDENT':
+                return redirect('student_dashboard')
+            else:
+                return redirect('profile_settings')
+    else:
+        form = ProfileUpdateForm(instance=request.user)
+
+    return render(request, 'accounts/profile_settings.html', {
+        'form': form
+    })
 
 def signup_view(request):
     if request.method == 'POST':
