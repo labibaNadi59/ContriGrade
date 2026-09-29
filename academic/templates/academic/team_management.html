@@ -3,15 +3,16 @@
 {% block title %}Team Management - ContriGrade{% endblock %}
 
 {% block sidebar_links %}
-<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
     <i class="fa-solid fa-book-open w-5"></i>
     <span>Projects</span>
 </a>
-<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
     <i class="fa-solid fa-users w-5"></i>
     <span>Teams</span>
 </a>
-<a href="#" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
     <i class="fa-solid fa-chart-line w-5"></i>
     <span>Reports</span>
 </a>

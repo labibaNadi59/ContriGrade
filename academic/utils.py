@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from .models import TeamMember
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import defaultdict
 
 def validate_github_connection():
     """Pings the GitHub API to verify the token is valid and active."""
@@ -193,9 +194,11 @@ def analyze_team_contributions(team, commits_data):
 
     # 3. Initialize the summary dashboard structure
     summary = {
-        'mapped_students': {},  # Stats per registered student
-        'unmapped_commits': [],  # Commits that don't match any registered student
-        'total_commits': len(commits_data)
+        'mapped_students': {},
+        'unmapped_commits': [],
+        'total_commits': len(commits_data),
+        'chart_labels': [],
+        'chart_data': []
     }
 
     # Pre-fill the dictionary for every team member (even if they have 0 commits)
@@ -225,5 +228,60 @@ def analyze_team_contributions(team, commits_data):
         else:
             # No match found (could be the instructor, an external contributor, or a misconfigured local git client)
             summary['unmapped_commits'].append(commit)
+
+    timeline_dict = defaultdict(int)
+    for commit in commits_data:
+        # Extract just the YYYY-MM-DD from '2026-09-28T14:32:00Z'
+        day_str = commit.get('date', '')[:10]
+        if day_str:
+            timeline_dict[day_str] += 1
+
+    # Sort dates chronologically
+    sorted_dates = sorted(timeline_dict.keys())
+    summary['chart_labels'] = sorted_dates
+    summary['chart_data'] = [timeline_dict[d] for d in sorted_dates]
+
+    for pk, student in summary['mapped_students'].items():
+        student['flags'] = []
+        fluff_count = 0
+        dump_count = 0
+        burst_count = 0
+
+        # Sort commits chronologically (oldest to newest) to check for time bursts
+        student_commits = sorted(student['commits'], key=lambda x: x['date'])
+
+        for i, commit in enumerate(student_commits):
+            total_changes = commit.get('additions', 0) + commit.get('deletions', 0)
+            msg = commit.get('message', '').strip()
+
+            # 1. Fluff Detection
+            if total_changes < 3 or len(msg) < 5:
+                fluff_count += 1
+
+            # 2. Massive Dump Detection
+            if commit.get('additions', 0) > 1000:
+                dump_count += 1
+
+            # 3. Burst Detection (Check time difference with the PREVIOUS commit)
+            if i > 0:
+                # GitHub dates look like "2026-09-28T14:32:00Z"
+                date_format = "%Y-%m-%dT%H:%M:%SZ"
+                try:
+                    current_date = datetime.strptime(commit['date'], date_format)
+                    prev_date = datetime.strptime(student_commits[i - 1]['date'], date_format)
+
+                    # If commits are less than 120 seconds apart
+                    if (current_date - prev_date).total_seconds() < 120:
+                        burst_count += 1
+                except ValueError:
+                    pass  # Ignore if date parsing fails
+
+        # Attach warnings to the student's profile if thresholds are met
+        if fluff_count > 0:
+            student['flags'].append(f"{fluff_count} trivial/fluff commits (Very low LOC or short messages).")
+        if dump_count > 0:
+            student['flags'].append(f"{dump_count} massive code dumps (>1,000 additions in a single commit).")
+        if burst_count > 0:
+            student['flags'].append(f"{burst_count} rapid-fire bursts (Commits pushed within 2 minutes of each other).")
 
     return summary

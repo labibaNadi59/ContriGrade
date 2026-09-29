@@ -11,7 +11,8 @@
     <i class="fa-solid fa-users w-5"></i>
     <span>Teams</span>
 </a>
-<a href="#" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
     <i class="fa-solid fa-chart-line w-5"></i>
     <span>Reports</span>
 </a>
@@ -48,11 +49,17 @@
                                 <h4 class="font-bold text-blue-600">{{ project.title }}</h4>
                                 <p class="text-xs text-gray-600">{{ project.section }}</p>
                             </div>
-                            <div class="text-right">
-                                <span class="text-xs font-semibold px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                    Deadline: {{ project.deadline|date:"M d, Y h:i A" }}
-                                </span>
-                            </div>
+                            <div class="text-right flex flex-col items-end gap-2">
+    <span class="text-xs font-semibold px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+        Deadline: {{ project.deadline|date:"M d, Y h:i A" }}
+    </span>
+
+    <!--  Master Report Button -->
+    <a href="{% url 'project_master_report' project.pk %}" class="inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition shadow-sm">
+        <i class="fa-solid fa-table-list mr-1.5"></i>
+        Class Report
+    </a>
+</div>
                         </li>
                     {% endfor %}
                 </ul>
