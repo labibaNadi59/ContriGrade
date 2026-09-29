@@ -32,11 +32,17 @@
             <p class="text-sm text-gray-500 ml-6">Project: <strong>{{ team.project.title }}</strong> | Team: <strong>{{ team.team_name }}</strong></p>
         </div>
         
-        {% if team.github_repo_url %}
-            <a href="{{ team.github_repo_url }}" target="_blank" class="inline-flex items-center bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800 transition">
-                <i class="fa-brands fa-github mr-2 text-lg"></i> View Repository
-            </a>
-        {% endif %}
+        <!-- Wrap the buttons in a flex container so they align perfectly -->
+<div class="flex items-center space-x-3">
+    {% if team.github_repo_url %}
+        <a href="?refresh=true" class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100 transition shadow-sm flex items-center">
+            <i class="fa-solid fa-arrows-rotate mr-1.5"></i> Refresh
+        </a>
+        <a href="{{ team.github_repo_url }}" target="_blank" class="inline-flex items-center bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800 transition shadow-sm">
+            <i class="fa-brands fa-github mr-2 text-lg"></i> View Repository
+        </a>
+    {% endif %}
+</div>
     </div>
 
     <!-- Error State -->
