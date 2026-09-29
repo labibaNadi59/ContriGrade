@@ -16,16 +16,6 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
-    
-    {% if messages %}
-        <div class="mb-6 space-y-2">
-            {% for message in messages %}
-                <div class="p-4 rounded-lg text-sm font-semibold bg-green-50 text-green-700 border border-green-200">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
         <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">

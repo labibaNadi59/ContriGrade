@@ -1,7 +1,9 @@
 import requests
 from django.conf import settings
 import re
-
+from datetime import datetime
+from .models import TeamMember
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def validate_github_connection():
     """Pings the GitHub API to verify the token is valid and active."""
@@ -80,3 +82,148 @@ def validate_github_repo_url(repo_url):
 
     except requests.RequestException as e:
         return {"valid": False, "error": "Network error while connecting to GitHub."}
+
+
+def fetch_deep_commit_stats(commit_info, owner, repo, headers):
+    """Worker function to fetch LOC stats for a single commit."""
+    sha = commit_info['sha']
+    deep_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{sha}"
+
+    try:
+        resp = requests.get(deep_url, headers=headers, timeout=5)
+        if resp.status_code == 200:
+            stats = resp.json().get('stats', {})
+            commit_info['additions'] = stats.get('additions', 0)
+            commit_info['deletions'] = stats.get('deletions', 0)
+        else:
+            commit_info['additions'] = 0
+            commit_info['deletions'] = 0
+    except requests.RequestException:
+        commit_info['additions'] = 0
+        commit_info['deletions'] = 0
+
+    return commit_info
+
+
+def fetch_team_commits(team):
+    """
+    Fetches up to 100 recent commits and uses multithreading to rapidly
+    gather Lines of Code (LOC) stats in parallel.
+    """
+    if not team.github_repo_url:
+        return {"status": "error", "message": "No repository linked to this team."}
+
+    pattern = r'^https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/?$'
+    match = re.match(pattern, team.github_repo_url)
+
+    if not match:
+        return {"status": "error", "message": "Invalid repository URL format."}
+
+    owner, repo = match.groups()
+    token = getattr(settings, 'GITHUB_API_TOKEN', None)
+
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+
+    # Step 1: Fetch the initial list of commits (Just 1 fast API call)
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=100&page=1"
+
+    try:
+        response = requests.get(api_url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return {"status": "error", "message": f"GitHub API error: Status {response.status_code}"}
+
+        page_commits = response.json()
+    except requests.RequestException as e:
+        return {"status": "error", "message": f"Network error: {str(e)}"}
+
+    # Step 2: Clean the base data
+    base_commits = []
+    for item in page_commits:
+        github_account = item.get('author')
+        base_commits.append({
+            'sha': item['sha'],
+            'author_username': github_account.get('login') if github_account else None,
+            'author_name': item['commit']['author']['name'],
+            'message': item['commit']['message'],
+            'date': item['commit']['author']['date'],
+            'url': item['html_url']
+        })
+
+    # Step 3: Fetch Deep Stats Concurrently (The Speed Boost!)
+    final_commits = []
+
+    # Use 20 parallel workers to blast through the API requests instantly
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        # Submit all jobs
+        future_to_commit = {
+            executor.submit(fetch_deep_commit_stats, commit, owner, repo, headers): commit
+            for commit in base_commits
+        }
+
+        # Collect results as they finish
+        for future in as_completed(future_to_commit):
+            final_commits.append(future.result())
+
+    # Sort them back into chronological order (since threads finish at random times)
+    final_commits.sort(key=lambda x: x['date'], reverse=True)
+
+    return {
+        "status": "success",
+        "total_commits": len(final_commits),
+        "commits": final_commits
+    }
+
+
+
+def analyze_team_contributions(team, commits_data):
+    """
+    Maps raw GitHub commits to registered TeamMembers and calculates summary stats.
+    """
+    # 1. Fetch all students actually assigned to this team in the database
+    members = TeamMember.objects.filter(team=team).select_related('user')
+
+    # 2. Build a fast lookup dictionary using github_username as the key
+    # We use .lower() to ensure case-insensitive matching (e.g., labibaNadi59 vs LabibaNadi59)
+    member_lookup = {}
+    for member in members:
+        if member.user.github_username:
+            member_lookup[member.user.github_username.lower()] = member
+
+    # 3. Initialize the summary dashboard structure
+    summary = {
+        'mapped_students': {},  # Stats per registered student
+        'unmapped_commits': [],  # Commits that don't match any registered student
+        'total_commits': len(commits_data)
+    }
+
+    # Pre-fill the dictionary for every team member (even if they have 0 commits)
+    for member in members:
+        summary['mapped_students'][member.user.pk] = {
+            'name': member.user.name,
+            'github_username': member.user.github_username,
+            'role': member.role_in_team,
+            'commit_count': 0,
+            'total_additions': 0,
+            'total_deletions': 0,
+            'commits': []
+        }
+
+    # 4. Map each commit to a student
+    for commit in commits_data:
+        gh_username = commit.get('author_username')
+
+        if gh_username and gh_username.lower() in member_lookup:
+            matched_member = member_lookup[gh_username.lower()]
+            student_data = summary['mapped_students'][matched_member.user.pk]
+
+            student_data['commit_count'] += 1
+            student_data['total_additions'] += commit.get('additions', 0)  # NEW
+            student_data['total_deletions'] += commit.get('deletions', 0)  # NEW
+            student_data['commits'].append(commit)
+        else:
+            # No match found (could be the instructor, an external contributor, or a misconfigured local git client)
+            summary['unmapped_commits'].append(commit)
+
+    return summary
