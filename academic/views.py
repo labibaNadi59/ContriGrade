@@ -8,6 +8,45 @@ from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionFor
     StudentEnrollmentForm, TeamRepoForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
+from .utils import fetch_team_commits, analyze_team_contributions
+
+@login_required
+def team_analytics_dashboard(request, team_id):
+    # Security: Ensure only instructors or admins can access this page
+    if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
+        messages.error(request, "Access denied. Instructor privileges required.")
+        return redirect('student_dashboard')
+
+    team = get_object_or_404(Team, pk=team_id)
+    analytics_data = None
+    error_message = None
+
+    if not team.github_repo_url:
+        error_message = "This team has not linked a GitHub repository yet."
+    else:
+        # 1. Fetch raw commits
+        fetch_result = fetch_team_commits(team)
+
+        if fetch_result['status'] == 'success':
+            # 2. Map commits to students
+            analytics_data = analyze_team_contributions(team, fetch_result['commits'])
+
+            # 3. Calculate percentages for the UI charts
+            total = analytics_data['total_commits']
+            if total > 0:
+                for pk, student in analytics_data['mapped_students'].items():
+                    student['percentage'] = round((student['commit_count'] / total) * 100, 1)
+            else:
+                for pk, student in analytics_data['mapped_students'].items():
+                    student['percentage'] = 0.0
+        else:
+            error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
+
+    return render(request, 'academic/team_analytics.html', {
+        'team': team,
+        'analytics': analytics_data,
+        'error_message': error_message
+    })
 
 
 @login_required

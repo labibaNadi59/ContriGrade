@@ -1,0 +1,141 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Analytics: {{ team.team_name }} - ContriGrade{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <a href="javascript:history.back()" class="text-gray-500 hover:text-blue-600 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <h2 class="text-2xl font-bold text-gray-800">Team Analytics</h2>
+            </div>
+            <p class="text-sm text-gray-500 ml-6">Project: <strong>{{ team.project.title }}</strong> | Team: <strong>{{ team.team_name }}</strong></p>
+        </div>
+        
+        {% if team.github_repo_url %}
+            <a href="{{ team.github_repo_url }}" target="_blank" class="inline-flex items-center bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800 transition">
+                <i class="fa-brands fa-github mr-2 text-lg"></i> View Repository
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- Error State -->
+    {% if error_message %}
+        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-sm">
+            <div class="flex items-center">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl mr-3"></i>
+                <h3 class="font-bold text-red-800">Cannot Generate Analytics</h3>
+            </div>
+            <p class="text-red-700 text-sm mt-2 ml-8">{{ error_message }}</p>
+        </div>
+    {% endif %}
+
+    <!-- Analytics Dashboard -->
+    {% if analytics %}
+        <!-- Top Stats Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-code-commit"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Commits</p>
+                    <p class="text-2xl font-black text-gray-800">{{ analytics.total_commits }}</p>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mapped Students</p>
+                    <p class="text-2xl font-black text-gray-800">{{ analytics.mapped_students|length }}</p>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 {% if analytics.unmapped_commits|length > 0 %}bg-yellow-100 text-yellow-600{% else %}bg-gray-100 text-gray-400{% endif %} rounded-lg flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-ghost"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Unmapped Commits</p>
+                    <p class="text-2xl font-black text-gray-800">{{ analytics.unmapped_commits|length }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Contribution Breakdown -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+            <div class="p-5 border-b border-gray-100 bg-gray-50">
+                <h3 class="font-bold text-gray-800">Student Contributions (By Commit Volume)</h3>
+            </div>
+            <div class="p-6 space-y-6">
+                {% for pk, student in analytics.mapped_students.items %}
+                    <div>
+                        <div class="flex justify-between items-end mb-2">
+                            <div>
+                                <h4 class="font-bold text-gray-900">{{ student.name }}</h4>
+                                <p class="text-xs text-gray-500">
+                                    <i class="fa-brands fa-github mr-1"></i> {{ student.github_username|default:"Missing GitHub ID" }} 
+                                    <span class="mx-1">&bull;</span> Role: {{ student.role|default:"Unassigned" }}
+                                </p>
+                            </div>
+                            <div class="text-right">
+    <!-- Lines Added / Deleted Tags -->
+    <div class="flex items-center justify-end space-x-2 mb-1">
+        <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-200" title="Lines Added">
+            +{{ student.total_additions }}
+        </span>
+        <span class="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200" title="Lines Deleted">
+            -{{ student.total_deletions }}
+        </span>
+    </div>
+
+    <!-- Commit Count -->
+    <span class="text-lg font-black text-blue-600">{{ student.commit_count }}</span>
+    <span class="text-xs text-gray-500 font-semibold uppercase">commits ({{ student.percentage }}%)</span>
+</div>
+                        </div>
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                            <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: {{ student.percentage }}%;"></div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-gray-500 italic">No registered students found for this team.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Unmapped Commits Warning -->
+        {% if analytics.unmapped_commits %}
+            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-5 shadow-sm">
+                <h3 class="font-bold text-yellow-800 mb-2 flex items-center">
+                    <i class="fa-solid fa-circle-exclamation mr-2"></i> Unmapped Commits Detected
+                </h3>
+                <p class="text-sm text-yellow-700 mb-4">
+                    The following GitHub users committed to this repository, but their usernames do not match any student registered in this team. 
+                    This happens when a student misspells their username in ContriGrade or commits from a misconfigured local terminal.
+                </p>
+                <div class="max-h-48 overflow-y-auto bg-white border border-yellow-200 rounded-lg">
+                    <ul class="divide-y divide-gray-100">
+                        {% for commit in analytics.unmapped_commits %}
+                            <li class="p-3 text-sm flex justify-between items-center hover:bg-gray-50">
+                                <div>
+                                    <span class="font-semibold text-gray-800">{{ commit.author_username|default:"Unknown User" }}</span>
+                                    <span class="text-gray-500 text-xs ml-2">"{{ commit.message|truncatechars:40 }}"</span>
+                                </div>
+                                <span class="text-xs text-gray-400">{{ commit.date|slice:":10" }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+
+    {% endif %}
+</div>
+{% endblock %}
