@@ -6,7 +6,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 
-
 def test_deactivated_user_cannot_access_restricted_page():
 
     driver = webdriver.Chrome(
@@ -35,7 +34,7 @@ def test_deactivated_user_cannot_access_restricted_page():
             )
         )
 
-        username.send_keys("tanjina@gamil.com")
+        username.send_keys("zaima@gmail.com")
         password.send_keys("123")
 
         password.submit()
