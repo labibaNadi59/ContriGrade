@@ -11,8 +11,31 @@ from accounts.models import User
 from .utils import fetch_team_commits, analyze_team_contributions
 import csv
 from django.http import HttpResponse
+from django.http import JsonResponse
 
 
+@login_required
+def load_project_students(request):
+    project_id = request.GET.get('project_id')
+    student_list = []
+
+    if project_id:
+        try:
+            # 1. Find the project
+            project = Project.objects.get(pk=project_id)
+            # 2. Get the students enrolled in this project's section
+            students = project.section.students.all().order_by('name')
+
+            # 3. Format it for the frontend
+            for student in students:
+                student_list.append({
+                    'id': student.pk,
+                    'name': student.name or student.username
+                })
+        except Project.DoesNotExist:
+            pass
+
+    return JsonResponse({'students': student_list})
 
 @login_required
 @student_required
@@ -43,6 +66,7 @@ def student_team_progress(request, team_id):
         if fetch_result['status'] == 'success':
             recent_commits = fetch_result['commits'][:15]
             analytics_data = analyze_team_contributions(team, fetch_result['commits'])
+            analytics_data['total_branches'] = fetch_result.get('total_branches', 1)
         else:
             error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
 
@@ -181,6 +205,7 @@ def team_analytics_dashboard(request, team_id):
             recent_commits = fetch_result['commits'][:15]
             # 2. Map commits to students
             analytics_data = analyze_team_contributions(team, fetch_result['commits'])
+            analytics_data['total_branches'] = fetch_result.get('total_branches', 1)
 
             # 3. Calculate percentages for the UI charts
             total = analytics_data['total_commits']

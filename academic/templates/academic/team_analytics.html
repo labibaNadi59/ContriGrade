@@ -59,35 +59,51 @@
     <!-- Analytics Dashboard -->
     {% if analytics %}
         <!-- Top Stats Row -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
-                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xl">
-                    <i class="fa-solid fa-code-commit"></i>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Commits</p>
-                    <p class="text-2xl font-black text-gray-800">{{ analytics.total_commits }}</p>
-                </div>
-            </div>
-            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
-                <div class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-xl">
-                    <i class="fa-solid fa-users"></i>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mapped Students</p>
-                    <p class="text-2xl font-black text-gray-800">{{ analytics.mapped_students|length }}</p>
-                </div>
-            </div>
-            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
-                <div class="w-12 h-12 {% if analytics.unmapped_commits|length > 0 %}bg-yellow-100 text-yellow-600{% else %}bg-gray-100 text-gray-400{% endif %} rounded-lg flex items-center justify-center text-xl">
-                    <i class="fa-solid fa-ghost"></i>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Unmapped Commits</p>
-                    <p class="text-2xl font-black text-gray-800">{{ analytics.unmapped_commits|length }}</p>
-                </div>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <!-- Card 1: Total Commits -->
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xl">
+            <i class="fa-solid fa-code-commit"></i>
         </div>
+        <div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Commits</p>
+            <p class="text-2xl font-black text-gray-800">{{ analytics.total_commits }}</p>
+        </div>
+    </div>
+
+    <!-- Card 2: Mapped Students -->
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+        <div class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-xl">
+            <i class="fa-solid fa-users"></i>
+        </div>
+        <div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mapped Students</p>
+            <p class="text-2xl font-black text-gray-800">{{ analytics.mapped_students|length }}</p>
+        </div>
+    </div>
+
+    <!-- Card 3: Unmapped Commits -->
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+        <div class="w-12 h-12 {% if analytics.unmapped_commits|length > 0 %}bg-yellow-100 text-yellow-600{% else %}bg-gray-100 text-gray-400{% endif %} rounded-lg flex items-center justify-center text-xl">
+            <i class="fa-solid fa-ghost"></i>
+        </div>
+        <div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Unmapped Commits</p>
+            <p class="text-2xl font-black text-gray-800">{{ analytics.unmapped_commits|length }}</p>
+        </div>
+    </div>
+
+    <!-- Card 4: Active Branches (Fixed Structure) -->
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+        <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-xl">
+            <i class="fa-solid fa-code-branch"></i>
+        </div>
+        <div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Active Branches</p>
+            <p class="text-2xl font-black text-gray-800">{{ analytics.total_branches|default:1 }}</p>
+        </div>
+    </div>
+</div>
 
     <!-- NEW: Visual Analytics Charts -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -132,10 +148,16 @@
                         </div>
                         <div class="flex items-center gap-4 shrink-0">
                             <!-- Lines of Code -->
-                            <div class="flex items-center space-x-1.5">
-                                <span class="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200" title="Additions">+{{ commit.additions }}</span>
-                                <span class="text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200" title="Deletions">-{{ commit.deletions }}</span>
-                            </div>
+                            {% if commit.is_merge %}
+                                <span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200" title="Pull Request Merge">
+                                    <i class="fa-solid fa-code-merge mr-1"></i> PR Merge
+                                </span>
+                            {% else %}
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200" title="Additions">+{{ commit.additions }}</span>
+                                    <span class="text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200" title="Deletions">-{{ commit.deletions }}</span>
+                                </div>
+                            {% endif %}
                             <!-- Link to GitHub Commit -->
                             <a href="{{ commit.url }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition" title="View code diff on GitHub">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
@@ -269,11 +291,21 @@
         // --- 2. Workload Split Chart (Doughnut) ---
         // Prepare arrays from your mapped_students dictionary
         const studentNames = [];
-        const studentCommits = [];
+        const studentImpact = [];
 
         {% for pk, student in analytics.mapped_students.items %}
             studentNames.push("{{ student.name|escapejs }}");
-            studentCommits.push({{ student.commit_count }});
+
+            {
+                let linesAdded = {{ student.total_additions|default:0 }};
+                let linesDeleted = {{ student.total_deletions|default:0 }};
+                let commitCount = {{ student.commit_count|default:0 }};
+
+                // COMPREHENSIVE IMPACT SCORE: Combines all 3 metrics
+                let totalImpact = linesAdded + linesDeleted + commitCount;
+
+                studentImpact.push(totalImpact);
+            }
         {% endfor %}
 
         const splitCtx = document.getElementById('splitChart').getContext('2d');
@@ -282,18 +314,24 @@
             data: {
                 labels: studentNames,
                 datasets: [{
-                    data: studentCommits,
-                    // Tailwind colors: Blue, Green, Yellow, Purple, Pink, Orange
+                    data: studentImpact,
                     backgroundColor: ['#2563EB', '#16A34A', '#EAB308', '#9333EA', '#DB2777', '#EA580C'],
-                    borderWidth: 0,
-                    hoverOffset: 4
+                    borderWidth: 0, hoverOffset: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                    // NEW: Update the tooltip to explain the combined score
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label}: ${context.raw} Impact Score (Commits + Lines)`;
+                            }
+                        }
+                    }
                 },
                 cutout: '70%'
             }

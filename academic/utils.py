@@ -139,6 +139,13 @@ def fetch_team_commits(team, force_refresh=False):
     # Step 1: Fetch the initial list of commits (Just 1 fast API call)
     api_url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=100&page=1"
 
+    branches_url = f"https://api.github.com/repos/{owner}/{repo}/branches"
+    try:
+        branches_res = requests.get(branches_url, headers=headers, timeout=5)
+        total_branches = len(branches_res.json()) if branches_res.status_code == 200 else 1
+    except requests.RequestException:
+        total_branches = 1
+
     try:
         response = requests.get(api_url, headers=headers, timeout=10)
         if response.status_code != 200:
@@ -151,6 +158,9 @@ def fetch_team_commits(team, force_refresh=False):
     # Step 2: Clean the base data
     base_commits = []
     for item in page_commits:
+        # NEW: Keep the merge commit, but tag it so the analytics engine ignores it
+        is_merge = len(item.get('parents', [])) > 1
+
         github_account = item.get('author')
         base_commits.append({
             'sha': item['sha'],
@@ -158,23 +168,30 @@ def fetch_team_commits(team, force_refresh=False):
             'author_name': item['commit']['author']['name'],
             'message': item['commit']['message'],
             'date': item['commit']['author']['date'],
-            'url': item['html_url']
+            'url': item['html_url'],
+            'is_merge': is_merge
         })
 
     # Step 3: Fetch Deep Stats Concurrently (The Speed Boost!)
+
+    normal_commits = [c for c in base_commits if not c['is_merge']]
+    merge_commits = [c for c in base_commits if c['is_merge']]
+
     final_commits = []
 
     # Use 20 parallel workers to blast through the API requests instantly
     with ThreadPoolExecutor(max_workers=20) as executor:
-        # Submit all jobs
         future_to_commit = {
             executor.submit(fetch_deep_commit_stats, commit, owner, repo, headers): commit
-            for commit in base_commits
+            for commit in normal_commits
         }
-
-        # Collect results as they finish
         for future in as_completed(future_to_commit):
             final_commits.append(future.result())
+
+    for mc in merge_commits:
+        mc['additions'] = 0
+        mc['deletions'] = 0
+        final_commits.append(mc)
 
     # Sort them back into chronological order (since threads finish at random times)
     final_commits.sort(key=lambda x: x['date'], reverse=True)
@@ -182,6 +199,7 @@ def fetch_team_commits(team, force_refresh=False):
     result = {
         "status": "success",
         "total_commits": len(final_commits),
+        "total_branches": total_branches,
         "commits": final_commits
     }
 
@@ -229,6 +247,8 @@ def analyze_team_contributions(team, commits_data):
 
     # 4. Map each commit to a student
     for commit in commits_data:
+        if commit.get('is_merge'):
+            continue
         gh_username = commit.get('author_username')
 
         if gh_username and gh_username.lower() in member_lookup:
