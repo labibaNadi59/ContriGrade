@@ -3,16 +3,20 @@
 {% block title %}Team Management - ContriGrade{% endblock %}
 
 {% block sidebar_links %}
-<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
+<!-- Projects Tab -->
+<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if 'dashboard' in request.resolver_match.url_name or 'project' in request.resolver_match.url_name %}bg-blue-50 text-blue-600 font-semibold{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
     <i class="fa-solid fa-book-open w-5"></i>
     <span>Projects</span>
 </a>
-<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+
+<!-- Teams Tab -->
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if 'team' in request.resolver_match.url_name %}bg-blue-50 text-blue-600 font-semibold{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
     <i class="fa-solid fa-users w-5"></i>
     <span>Teams</span>
 </a>
 
-<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+<!-- Reports Tab -->
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if 'report' in request.resolver_match.url_name %}bg-blue-50 text-blue-600 font-semibold{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
     <i class="fa-solid fa-chart-line w-5"></i>
     <span>Reports</span>
 </a>
@@ -82,4 +86,55 @@
         </div>
     </div>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Django ModelForms automatically name inputs id_<fieldname>
+        const projectDropdown = document.getElementById('id_project');
+        const membersDropdown = document.getElementById('id_members');
+
+        if (projectDropdown && membersDropdown) {
+            projectDropdown.addEventListener('change', function() {
+                const projectId = this.value;
+
+                // 1. Show loading state
+                membersDropdown.innerHTML = '<option value="" disabled>Loading students...</option>';
+
+                // 2. Clear if they unselect the project
+                if (!projectId) {
+                    membersDropdown.innerHTML = '';
+                    return;
+                }
+
+                // 3. Fetch the students securely from our new Django URL
+                fetch(`/academic/ajax/load-project-students/?project_id=${projectId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        membersDropdown.innerHTML = ''; // Clear dropdown
+
+                        if (data.students.length === 0) {
+                            membersDropdown.innerHTML = '<option value="" disabled>No students enrolled in this section.</option>';
+                        } else {
+                            // Populate the list with the fetched students
+                            data.students.forEach(student => {
+                                const option = document.createElement('option');
+                                option.value = student.id;
+                                option.textContent = student.name;
+                                membersDropdown.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching students:', error);
+                        membersDropdown.innerHTML = '<option value="" disabled>Error loading students.</option>';
+                    });
+            });
+
+            // Trigger the change event on load if a project is already selected
+            // (Useful if the form reloads with validation errors)
+            if (projectDropdown.value) {
+                projectDropdown.dispatchEvent(new Event('change'));
+            }
+        }
+    });
+</script>
 {% endblock %}
