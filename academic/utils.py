@@ -218,7 +218,6 @@ def analyze_team_contributions(team, commits_data):
     members = TeamMember.objects.filter(team=team).select_related('user')
 
     # 2. Build a fast lookup dictionary using github_username as the key
-    # We use .lower() to ensure case-insensitive matching (e.g., labibaNadi59 vs LabibaNadi59)
     member_lookup = {}
     for member in members:
         if member.user.github_username:
@@ -233,7 +232,7 @@ def analyze_team_contributions(team, commits_data):
         'chart_data': []
     }
 
-    # Pre-fill the dictionary for every team member (even if they have 0 commits)
+    # Pre-fill the dictionary for every team member
     for member in members:
         summary['mapped_students'][member.user.pk] = {
             'name': member.user.name,
@@ -256,66 +255,75 @@ def analyze_team_contributions(team, commits_data):
             student_data = summary['mapped_students'][matched_member.user.pk]
 
             student_data['commit_count'] += 1
-            student_data['total_additions'] += commit.get('additions', 0)  # NEW
-            student_data['total_deletions'] += commit.get('deletions', 0)  # NEW
+            student_data['total_additions'] += commit.get('additions', 0)
+            student_data['total_deletions'] += commit.get('deletions', 0)
             student_data['commits'].append(commit)
         else:
-            # No match found (could be the instructor, an external contributor, or a misconfigured local git client)
             summary['unmapped_commits'].append(commit)
 
+    # 5. Build Timeline Chart Data
     timeline_dict = defaultdict(int)
     for commit in commits_data:
-        # Extract just the YYYY-MM-DD from '2026-09-28T14:32:00Z'
         day_str = commit.get('date', '')[:10]
         if day_str:
             timeline_dict[day_str] += 1
 
-    # Sort dates chronologically
     sorted_dates = sorted(timeline_dict.keys())
     summary['chart_labels'] = sorted_dates
     summary['chart_data'] = [timeline_dict[d] for d in sorted_dates]
 
+    # 6. Integrity Flags Engine
     for pk, student in summary['mapped_students'].items():
         student['flags'] = []
         fluff_count = 0
         dump_count = 0
         burst_count = 0
 
-        # Sort commits chronologically (oldest to newest) to check for time bursts
         student_commits = sorted(student['commits'], key=lambda x: x['date'])
 
         for i, commit in enumerate(student_commits):
             total_changes = commit.get('additions', 0) + commit.get('deletions', 0)
             msg = commit.get('message', '').strip()
 
-            # 1. Fluff Detection
             if total_changes < 3 or len(msg) < 5:
                 fluff_count += 1
 
-            # 2. Massive Dump Detection
             if commit.get('additions', 0) > 1000:
                 dump_count += 1
 
-            # 3. Burst Detection (Check time difference with the PREVIOUS commit)
             if i > 0:
-                # GitHub dates look like "2026-09-28T14:32:00Z"
                 date_format = "%Y-%m-%dT%H:%M:%SZ"
                 try:
                     current_date = datetime.strptime(commit['date'], date_format)
                     prev_date = datetime.strptime(student_commits[i - 1]['date'], date_format)
 
-                    # If commits are less than 120 seconds apart
                     if (current_date - prev_date).total_seconds() < 120:
                         burst_count += 1
                 except ValueError:
-                    pass  # Ignore if date parsing fails
+                    pass
 
-        # Attach warnings to the student's profile if thresholds are met
         if fluff_count > 0:
             student['flags'].append(f"{fluff_count} trivial/fluff commits (Very low LOC or short messages).")
         if dump_count > 0:
             student['flags'].append(f"{dump_count} massive code dumps (>1,000 additions in a single commit).")
         if burst_count > 0:
             student['flags'].append(f"{burst_count} rapid-fire bursts (Commits pushed within 2 minutes of each other).")
+
+    # 7. NEW: Calculate Fair Impact Score & Percentages for Progress Bars
+    total_team_impact = 0
+    for pk, student in summary['mapped_students'].items():
+        impact = student['total_additions'] + student['total_deletions'] + student['commit_count']
+
+        if impact == 0 and student['commit_count'] > 0:
+            impact = student['commit_count']
+
+        student['impact_score'] = impact
+        total_team_impact += impact
+
+    for pk, student in summary['mapped_students'].items():
+        if total_team_impact > 0:
+            student['percentage'] = round((student['impact_score'] / total_team_impact) * 100)
+        else:
+            student['percentage'] = 0
 
     return summary

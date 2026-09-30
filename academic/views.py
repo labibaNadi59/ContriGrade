@@ -181,6 +181,7 @@ def reports_hub(request):
         'projects': projects
     })
 
+
 @login_required
 def team_analytics_dashboard(request, team_id):
     # Security: Ensure only instructors or admins can access this page
@@ -195,6 +196,7 @@ def team_analytics_dashboard(request, team_id):
     recent_commits = []
     # Check if the user clicked the refresh button
     force_refresh = request.GET.get('refresh') == 'true'
+
     if not team.github_repo_url:
         error_message = "This team has not linked a GitHub repository yet."
     else:
@@ -203,25 +205,18 @@ def team_analytics_dashboard(request, team_id):
 
         if fetch_result['status'] == 'success':
             recent_commits = fetch_result['commits'][:15]
-            # 2. Map commits to students
+
+            # 2. Map commits to students (calculates the correct Impact percentage )
             analytics_data = analyze_team_contributions(team, fetch_result['commits'])
             analytics_data['total_branches'] = fetch_result.get('total_branches', 1)
 
-            # 3. Calculate percentages for the UI charts
-            total = analytics_data['total_commits']
-            if total > 0:
-                for pk, student in analytics_data['mapped_students'].items():
-                    student['percentage'] = round((student['commit_count'] / total) * 100, 1)
-            else:
-                for pk, student in analytics_data['mapped_students'].items():
-                    student['percentage'] = 0.0
         else:
             error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
 
     return render(request, 'academic/team_analytics.html', {
         'team': team,
         'analytics': analytics_data,
-        'recent_commits': recent_commits,  # NEW
+        'recent_commits': recent_commits,
         'error_message': error_message
     })
 
