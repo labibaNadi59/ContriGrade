@@ -21,4 +21,6 @@ path('instructor/team/<int:team_id>/analytics/', views.team_analytics_dashboard,
 path('instructor/project/<int:project_id>/report/', views.project_master_report, name='project_master_report'),
 path('instructor/reports/', views.reports_hub, name='reports_hub'),
 
+path('student/team/<int:team_id>/progress/', views.student_team_progress, name='student_team_progress'),
+
 ]

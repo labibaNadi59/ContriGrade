@@ -12,6 +12,49 @@ from .utils import fetch_team_commits, analyze_team_contributions
 import csv
 from django.http import HttpResponse
 
+
+
+@login_required
+@student_required
+def student_dashboard(request):
+    # This view now serves as "My Projects"
+    memberships = TeamMember.objects.filter(user=request.user).select_related('team__project')
+
+    return render(request, 'academic/student_dashboard.html', {
+        'memberships': memberships
+    })
+
+
+@login_required
+@student_required
+def student_team_progress(request, team_id):
+    # Securely fetch only the team this student belongs to
+    team = get_object_or_404(Team, pk=team_id, members=request.user)
+
+    recent_commits = []
+    error_message = None
+    analytics_data = None
+    force_refresh = request.GET.get('refresh') == 'true'
+
+    if not team.github_repo_url:
+        error_message = "Your team has not linked a GitHub repository yet."
+    else:
+        fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
+        if fetch_result['status'] == 'success':
+            recent_commits = fetch_result['commits'][:15]
+            analytics_data = analyze_team_contributions(team, fetch_result['commits'])
+        else:
+            error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
+
+    return render(request, 'academic/student_progress.html', {
+        'team': team,
+        'analytics': analytics_data,
+        'recent_commits': recent_commits,
+        'error_message': error_message
+    })
+
+
+
 @login_required
 def project_master_report(request, project_id):
     if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
