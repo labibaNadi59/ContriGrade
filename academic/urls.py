@@ -24,4 +24,6 @@ path('instructor/reports/', views.reports_hub, name='reports_hub'),
 path('student/team/<int:team_id>/progress/', views.student_team_progress, name='student_team_progress'),
 path('ajax/load-project-students/', views.load_project_students, name='ajax_load_project_students'),
 
+path('instructor/project/<int:project_id>/edit/', views.edit_project, name='edit_project'),
+
 ]

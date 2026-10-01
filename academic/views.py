@@ -224,13 +224,18 @@ def team_analytics_dashboard(request, team_id):
 @login_required
 @student_required
 def update_team_repo(request, team_id):
-    # 1. Security check: Get the team, and verify the current user is a member!
     team = get_object_or_404(Team, pk=team_id)
     is_member = TeamMember.objects.filter(team=team, user=request.user).exists()
 
     if not is_member:
         messages.error(request, "Security block: You can only link repositories for your own team.")
         return redirect('student_dashboard')
+
+    # -STRICT DEADLINE ENFORCEMENT ---
+    if not team.project.is_active():
+        messages.error(request, f"Submission locked. The deadline for {team.project.title} has passed.")
+        return redirect('student_dashboard')
+    # ----------------------------------------
 
     if request.method == 'POST':
         form = TeamRepoForm(request.POST, instance=team)
@@ -507,6 +512,12 @@ def update_student_project_role(request, membership_id):
     # Strict ownership check: student can only edit their own role
     membership = get_object_or_404(TeamMember, pk=membership_id, user=request.user)
 
+    # STRICT DEADLINE ENFORCEMENT ---
+    if not membership.team.project.is_active():
+        messages.error(request, f"Role updates locked. The deadline for {membership.team.project.title} has passed.")
+        return redirect('student_dashboard')
+    # ----------------------------------------
+
     if request.method == 'POST':
         form = StudentProjectRoleForm(request.POST, instance=membership)
         if form.is_valid():
@@ -520,3 +531,34 @@ def update_student_project_role(request, membership_id):
         'form': form,
         'membership': membership,
     })
+
+@login_required
+def edit_project(request, project_id):
+    # Security: Ensure only instructors or coordinators access this
+    if request.user.role not in ['INSTRUCTOR', 'COORDINATOR']:
+        messages.error(request, "Access denied.")
+        return redirect('dashboard_redirect')
+
+    project = get_object_or_404(Project, pk=project_id)
+
+    # Security: Ensure the instructor actually owns this project's section
+    if request.user.role == 'INSTRUCTOR' and project.section.instructor != request.user:
+        messages.error(request, "You can only edit projects assigned to your sections.")
+        return redirect('dashboard_redirect')
+
+    if request.method == 'POST':
+        # Pass both request.POST and the existing project instance
+        form = ProjectForm(request.POST, instance=project, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Successfully updated '{project.title}'.")
+            return redirect('dashboard_redirect')
+    else:
+        # Pre-fill the form with existing data
+        form = ProjectForm(instance=project, user=request.user)
+
+    return render(request, 'academic/edit_project.html', {
+        'form': form,
+        'project': project
+    })
+
