@@ -1,3 +1,4 @@
+
 """
 Django settings for mysite project.
 
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-d7s-uq8w^)+s#p*6238vs3$j!%h#(mrio5g3=h5mxd1k*4hf=m
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
 
 # Application definition
@@ -108,7 +109,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Dhaka'
 
 USE_I18N = True
 
@@ -143,3 +144,4 @@ load_dotenv(BASE_DIR / ".env")
 
 # GitHub API Configuration
 GITHUB_API_TOKEN = os.getenv('GITHUB_API_TOKEN')
+
