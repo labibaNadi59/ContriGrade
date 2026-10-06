@@ -124,51 +124,64 @@
             </div>
         </div>
 
-    <!-- NEW: Recent Commits Feed -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
-            <div class="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                <h3 class="font-bold text-gray-800">Recent Commits Feed</h3>
-                <span class="text-xs font-semibold text-gray-600 bg-gray-200 px-2.5 py-1 rounded-full">Latest 15 Commits</span>
-            </div>
-
-            <!-- Scrollable list container -->
-            <div class="divide-y divide-gray-100 max-h-80 overflow-y-auto bg-white">
-                {% for commit in recent_commits %}
-                    <div class="p-4 hover:bg-gray-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <i class="fa-brands fa-github text-gray-400"></i>
-                                <span class="font-bold text-sm text-gray-900">{{ commit.author_username|default:commit.author_name }}</span>
-                                <span class="text-xs text-gray-400">&bull;</span>
-                                <span class="text-xs text-gray-500">{{ commit.date|slice:":10" }}</span>
-                            </div>
-                            <p class="text-sm text-gray-700 font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200 inline-block truncate max-w-full md:max-w-xl">
-                                {{ commit.message }}
-                            </p>
-                        </div>
-                        <div class="flex items-center gap-4 shrink-0">
-                            <!-- Lines of Code -->
-                            {% if commit.is_merge %}
-                                <span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200" title="Pull Request Merge">
-                                    <i class="fa-solid fa-code-merge mr-1"></i> PR Merge
-                                </span>
-                            {% else %}
-                                <div class="flex items-center space-x-1.5">
-                                    <span class="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200" title="Additions">+{{ commit.additions }}</span>
-                                    <span class="text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200" title="Deletions">-{{ commit.deletions }}</span>
-                                </div>
-                            {% endif %}
-                            <!-- Link to GitHub Commit -->
-                            <a href="{{ commit.url }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition" title="View code diff on GitHub">
-                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                            </a>
-                        </div>
-                    </div>
-                {% empty %}
-                    <div class="p-6 text-center text-gray-500 text-sm">No commits found for this repository.</div>
+    <!--  Recent Commits Feed -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+        <div class="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+        <h3 class="font-bold text-gray-800">Project Commits Feed</h3>
+        <span class="text-xs font-semibold text-gray-600 bg-gray-200 px-2.5 py-1 rounded-full">{{ recent_commits|length }} Total</span>
+    </div>
+            <!-- NEW: Real-time Student Filter Dropdown -->
+            <select id="studentCommitFilter" class="text-sm border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-1.5 pl-3 pr-8">
+                <option value="all">All Team Members</option>
+                {% for pk, student in analytics.mapped_students.items %}
+                    {% if student.github_username %}
+                        <option value="{{ student.github_username|lower }}">{{ student.name }}</option>
+                    {% endif %}
                 {% endfor %}
-            </div>
+            </select>
         </div>
+
+        <!-- Scrollable list container with an ID for our JS -->
+        <div id="commitsFeedContainer" class="divide-y divide-gray-100 max-h-80 overflow-y-auto bg-white">
+            {% for commit in recent_commits %}
+                <!-- ADDED: 'commit-item' class and 'data-author' attribute -->
+                <div class="commit-item p-4 hover:bg-gray-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                     data-author="{{ commit.author_username|default:commit.author_name|lower }}">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i class="fa-brands fa-github text-gray-400"></i>
+                            <span class="font-bold text-sm text-gray-900">{{ commit.author_username|default:commit.author_name }}</span>
+                            <span class="text-xs text-gray-400">&bull;</span>
+                            <span class="text-xs text-gray-500">{{ commit.date|slice:":10" }}</span>
+                        </div>
+                        <p class="text-sm text-gray-700 font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200 inline-block truncate max-w-full md:max-w-xl">
+                            {{ commit.message }}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4 shrink-0">
+                        <!-- Lines of Code -->
+                        {% if commit.is_merge %}
+                            <span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200" title="Pull Request Merge">
+                                <i class="fa-solid fa-code-merge mr-1"></i> PR Merge
+                            </span>
+                        {% else %}
+                            <div class="flex items-center space-x-1.5">
+                                <span class="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200" title="Additions">+{{ commit.additions }}</span>
+                                <span class="text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200" title="Deletions">-{{ commit.deletions }}</span>
+                            </div>
+                        {% endif %}
+                        <!-- Link to GitHub Commit -->
+                        <a href="{{ commit.url }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition" title="View code diff on GitHub">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="p-6 text-center text-gray-500 text-sm">No commits found for this repository.</div>
+            {% endfor %}
+        </div>
+    </div>
         <!-- Student Contribution Breakdown -->
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
             <div class="p-5 border-b border-gray-100 bg-gray-50">
@@ -346,6 +359,31 @@
                 cutout: '70%'
             }
         });
+
+        // --- 3. Fast Frontend Commit Filtering ---
+        const filterSelect = document.getElementById('studentCommitFilter');
+        const commitItems = document.querySelectorAll('.commit-item');
+
+        if (filterSelect) {
+            filterSelect.addEventListener('change', function() {
+                const selectedAuthor = this.value.toLowerCase();
+
+                commitItems.forEach(item => {
+                    if (selectedAuthor === 'all') {
+                        // Restore the original flexbox display
+                        item.style.display = 'flex';
+                    } else {
+                        // Check if the commit's data-author tag matches the dropdown
+                        const itemAuthor = item.getAttribute('data-author');
+                        if (itemAuthor === selectedAuthor) {
+                            item.style.display = 'flex';
+                        } else {
+                            item.style.display = 'none'; // Instantly hide it
+                        }
+                    }
+                });
+            });
+        }
     });
 </script>
 {% endblock %}
