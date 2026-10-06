@@ -39,17 +39,6 @@ def load_project_students(request):
 
 @login_required
 @student_required
-def student_dashboard(request):
-    # This view now serves as "My Projects"
-    memberships = TeamMember.objects.filter(user=request.user).select_related('team__project')
-
-    return render(request, 'academic/student_dashboard.html', {
-        'memberships': memberships
-    })
-
-
-@login_required
-@student_required
 def student_team_progress(request, team_id):
     # Securely fetch only the team this student belongs to
     team = get_object_or_404(Team, pk=team_id, members=request.user)
@@ -64,18 +53,41 @@ def student_team_progress(request, team_id):
     else:
         fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
         if fetch_result['status'] == 'success':
-            recent_commits = fetch_result['commits'][:15]
+            recent_commits = fetch_result['commits']  # Fetching all commits based on our earlier fix
             analytics_data = analyze_team_contributions(team, fetch_result['commits'])
             analytics_data['total_branches'] = fetch_result.get('total_branches', 1)
         else:
             error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
 
+    # --- NEW: Non-Coding Deliverables Logic ---
+    deliverables = team.deliverables.all().order_by('-submitted_at')
+
+    if request.method == 'POST' and 'submit_deliverable' in request.POST:
+        # Strict Deadline Enforcement
+        if not team.project.is_active():
+            messages.error(request, f"Submissions locked. The deadline for {team.project.title} has passed.")
+            return redirect('student_team_progress', team_id=team.team_id)
+
+        deliverable_form = NonCodingDeliverableForm(request.POST)
+        if deliverable_form.is_valid():
+            deliverable = deliverable_form.save(commit=False)
+            deliverable.team = team
+            deliverable.submitted_by = request.user
+            deliverable.save()
+            messages.success(request, "Deliverable submitted successfully.")
+            return redirect('student_team_progress', team_id=team.team_id)
+    else:
+        deliverable_form = NonCodingDeliverableForm()
+
     return render(request, 'academic/student_progress.html', {
         'team': team,
         'analytics': analytics_data,
         'recent_commits': recent_commits,
-        'error_message': error_message
+        'error_message': error_message,
+        'deliverable_form': deliverable_form,
+        'deliverables': deliverables,
     })
+
 
 
 
@@ -563,56 +575,6 @@ def edit_project(request, project_id):
     })
 
 
-@login_required
-@student_required
-def student_team_progress(request, team_id):
-    # Securely fetch only the team this student belongs to
-    team = get_object_or_404(Team, pk=team_id, members=request.user)
-
-    recent_commits = []
-    error_message = None
-    analytics_data = None
-    force_refresh = request.GET.get('refresh') == 'true'
-
-    if not team.github_repo_url:
-        error_message = "Your team has not linked a GitHub repository yet."
-    else:
-        fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
-        if fetch_result['status'] == 'success':
-            recent_commits = fetch_result['commits']  # Fetching all commits based on our earlier fix
-            analytics_data = analyze_team_contributions(team, fetch_result['commits'])
-            analytics_data['total_branches'] = fetch_result.get('total_branches', 1)
-        else:
-            error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
-
-    # --- NEW: Non-Coding Deliverables Logic ---
-    deliverables = team.deliverables.all().order_by('-submitted_at')
-
-    if request.method == 'POST' and 'submit_deliverable' in request.POST:
-        # Strict Deadline Enforcement
-        if not team.project.is_active():
-            messages.error(request, f"Submissions locked. The deadline for {team.project.title} has passed.")
-            return redirect('student_team_progress', team_id=team.team_id)
-
-        deliverable_form = NonCodingDeliverableForm(request.POST)
-        if deliverable_form.is_valid():
-            deliverable = deliverable_form.save(commit=False)
-            deliverable.team = team
-            deliverable.submitted_by = request.user
-            deliverable.save()
-            messages.success(request, "Deliverable submitted successfully.")
-            return redirect('student_team_progress', team_id=team.team_id)
-    else:
-        deliverable_form = NonCodingDeliverableForm()
-
-    return render(request, 'academic/student_progress.html', {
-        'team': team,
-        'analytics': analytics_data,
-        'recent_commits': recent_commits,
-        'error_message': error_message,
-        'deliverable_form': deliverable_form,
-        'deliverables': deliverables,
-    })
 
 
 @login_required
