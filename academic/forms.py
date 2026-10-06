@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Project, Team, Course, TeamMember
+from .models import Project, Team, Course, TeamMember, NonCodingDeliverable
 from accounts.models import User
 from .models import CourseSection
 from .utils import validate_github_repo_url
@@ -283,3 +283,14 @@ class TeamRepoForm(forms.ModelForm):
             # Return the cleaned version of the URL (without .git at the end)
             return validation['clean_url']
         return url
+
+
+class NonCodingDeliverableForm(forms.ModelForm):
+    class Meta:
+        model = NonCodingDeliverable
+        fields = ['title', 'link', 'description']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', 'placeholder': 'e.g., Figma UI Wireframes'}),
+            'link': forms.URLInput(attrs={'class': 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', 'placeholder': 'https://...'}),
+            'description': forms.Textarea(attrs={'class': 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', 'rows': 3, 'placeholder': 'Optional notes about this deliverable...'}),
+        }

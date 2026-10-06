@@ -25,5 +25,8 @@ path('student/team/<int:team_id>/progress/', views.student_team_progress, name='
 path('ajax/load-project-students/', views.load_project_students, name='ajax_load_project_students'),
 
 path('instructor/project/<int:project_id>/edit/', views.edit_project, name='edit_project'),
+path('student/deliverable/<int:deliverable_id>/edit/', views.edit_deliverable, name='edit_deliverable'),
+    path('student/deliverable/<int:deliverable_id>/delete/', views.delete_deliverable, name='delete_deliverable'),
+
 
 ]

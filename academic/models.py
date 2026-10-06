@@ -124,3 +124,17 @@ class TeamMember(models.Model):
 
     def __str__(self):
         return f"{self.user.name} -> {self.team.team_name}"
+
+
+
+class NonCodingDeliverable(models.Model):
+    deliverable_id = models.AutoField(primary_key=True)
+    team = models.ForeignKey('Team', on_delete=models.CASCADE, related_name='deliverables')
+    submitted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    title = models.CharField(max_length=255, help_text="e.g., Figma Design, SRS Document")
+    link = models.URLField(max_length=500, help_text="Must be a valid URL starting with http:// or https://")
+    description = models.TextField(blank=True, default='')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.team.team_name})"
