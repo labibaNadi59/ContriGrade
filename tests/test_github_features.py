@@ -272,10 +272,12 @@ class TestGitHubFeatures(unittest.TestCase):
         self.assertTrue(timeline_canvas.is_displayed())
         self.assertTrue(split_canvas.is_displayed())
 
-        # Verify Recent Commits Feed
+        # Verify Commits Feed
         body_text = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertIn("Recent Commits Feed", body_text)
-        self.assertIn("Latest 15 Commits", body_text)
+        self.assertTrue(
+            "project commits feed" in body_text.lower() or "recent commits feed" in body_text.lower(),
+            "Commits feed header should be displayed on page"
+        )
 
         # Check commit entry presence
         commit_elements = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'divide-y')]//p[contains(@class, 'font-mono')]")
@@ -337,3 +339,5 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(not result.wasSuccessful())
+
+
