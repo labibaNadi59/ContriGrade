@@ -1,0 +1,26 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Delete Deliverable - ContriGrade{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-10">
+    <div class="bg-white p-8 rounded-xl border border-red-200 shadow-sm text-center">
+        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">Delete Deliverable?</h2>
+        <p class="text-gray-600 mb-6">Are you sure you want to delete <strong>"{{ deliverable.title }}"</strong>? This action cannot be undone.</p>
+
+        <form method="post" class="flex gap-4 justify-center">
+            {% csrf_token %}
+            <a href="{% url 'student_team_progress' deliverable.team.team_id %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition">
+                Cancel
+            </a>
+            <button type="submit" class="px-6 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition shadow-sm">
+                Yes, Delete It
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

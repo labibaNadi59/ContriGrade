@@ -3,9 +3,9 @@ from django.shortcuts import render, redirect
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
-from .models import Project, Team, TeamMember, Course, CourseSection
+from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
-    StudentEnrollmentForm, TeamRepoForm
+    StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
 from .utils import fetch_team_commits, analyze_team_contributions
@@ -562,3 +562,109 @@ def edit_project(request, project_id):
         'project': project
     })
 
+
+@login_required
+@student_required
+def student_team_progress(request, team_id):
+    # Securely fetch only the team this student belongs to
+    team = get_object_or_404(Team, pk=team_id, members=request.user)
+
+    recent_commits = []
+    error_message = None
+    analytics_data = None
+    force_refresh = request.GET.get('refresh') == 'true'
+
+    if not team.github_repo_url:
+        error_message = "Your team has not linked a GitHub repository yet."
+    else:
+        fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
+        if fetch_result['status'] == 'success':
+            recent_commits = fetch_result['commits']  # Fetching all commits based on our earlier fix
+            analytics_data = analyze_team_contributions(team, fetch_result['commits'])
+            analytics_data['total_branches'] = fetch_result.get('total_branches', 1)
+        else:
+            error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
+
+    # --- NEW: Non-Coding Deliverables Logic ---
+    deliverables = team.deliverables.all().order_by('-submitted_at')
+
+    if request.method == 'POST' and 'submit_deliverable' in request.POST:
+        # Strict Deadline Enforcement
+        if not team.project.is_active():
+            messages.error(request, f"Submissions locked. The deadline for {team.project.title} has passed.")
+            return redirect('student_team_progress', team_id=team.team_id)
+
+        deliverable_form = NonCodingDeliverableForm(request.POST)
+        if deliverable_form.is_valid():
+            deliverable = deliverable_form.save(commit=False)
+            deliverable.team = team
+            deliverable.submitted_by = request.user
+            deliverable.save()
+            messages.success(request, "Deliverable submitted successfully.")
+            return redirect('student_team_progress', team_id=team.team_id)
+    else:
+        deliverable_form = NonCodingDeliverableForm()
+
+    return render(request, 'academic/student_progress.html', {
+        'team': team,
+        'analytics': analytics_data,
+        'recent_commits': recent_commits,
+        'error_message': error_message,
+        'deliverable_form': deliverable_form,
+        'deliverables': deliverables,
+    })
+
+
+@login_required
+@student_required
+def edit_deliverable(request, deliverable_id):
+    deliverable = get_object_or_404(NonCodingDeliverable, pk=deliverable_id)
+    team = deliverable.team
+
+    # Security Rule 1: Only the original submitter can edit it
+    if deliverable.submitted_by != request.user:
+        messages.error(request, "Security block: You can only edit your own submissions.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    # Security Rule 2: Cannot edit if the deadline has passed
+    if not team.project.is_active():
+        messages.error(request, "Editing is locked. The project deadline has passed.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    if request.method == 'POST':
+        form = NonCodingDeliverableForm(request.POST, instance=deliverable)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Successfully updated '{deliverable.title}'.")
+            return redirect('student_team_progress', team_id=team.team_id)
+    else:
+        form = NonCodingDeliverableForm(instance=deliverable)
+
+    return render(request, 'academic/edit_deliverable.html', {
+        'form': form,
+        'deliverable': deliverable
+    })
+
+
+@login_required
+@student_required
+def delete_deliverable(request, deliverable_id):
+    deliverable = get_object_or_404(NonCodingDeliverable, pk=deliverable_id)
+    team = deliverable.team
+
+    if deliverable.submitted_by != request.user:
+        messages.error(request, "Security block: You can only delete your own submissions.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    if not team.project.is_active():
+        messages.error(request, "Deleting is locked. The project deadline has passed.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    if request.method == 'POST':
+        deliverable.delete()
+        messages.success(request, "Deliverable successfully removed.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    return render(request, 'academic/delete_deliverable.html', {
+        'deliverable': deliverable
+    })
