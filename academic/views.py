@@ -204,7 +204,7 @@ def team_analytics_dashboard(request, team_id):
         fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
 
         if fetch_result['status'] == 'success':
-            recent_commits = fetch_result['commits'][:15]
+            recent_commits = fetch_result['commits']
 
             # 2. Map commits to students (calculates the correct Impact percentage )
             analytics_data = analyze_team_contributions(team, fetch_result['commits'])
