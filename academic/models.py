@@ -157,3 +157,53 @@ class DeliverableContribution(models.Model):
     def __str__(self):
         return f"{self.student.name} - {self.contribution_area} ({self.get_status_display()})"
 
+
+class EvaluationCriterion(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='evaluation_criteria')
+    name = models.CharField(max_length=100, help_text="e.g., Technical Contribution, Communication, Punctuality")
+    description = models.TextField(blank=True, help_text="Optional breakdown of what this criterion means")
+    max_score = models.IntegerField(default=5, help_text="Maximum possible score (default is 5)")
+
+    def __str__(self):
+        return f"{self.name} - {self.project.title}"
+
+
+class PeerEvaluation(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='evaluations')
+    evaluator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='evaluations_given'
+    )
+    evaluatee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='evaluations_received'
+    )
+    general_feedback = models.TextField(blank=True, help_text="Anonymous text feedback for the teammate")
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # A student can only evaluate a specific teammate once per team
+        unique_together = ('team', 'evaluator', 'evaluatee')
+
+    def __str__(self):
+        return f"Evaluation in {self.team.team_name} (To: {self.evaluatee.name})"
+
+
+class PeerEvaluationScore(models.Model):
+    evaluation = models.ForeignKey(PeerEvaluation, on_delete=models.CASCADE, related_name='scores')
+    criterion = models.ForeignKey(EvaluationCriterion, on_delete=models.CASCADE)
+    score = models.IntegerField()
+
+    class Meta:
+        # A specific evaluation can only have one score per criterion
+        unique_together = ('evaluation', 'criterion')
+
+    def __str__(self):
+        return f"{self.criterion.name}: {self.score}"
+
+
+
+
+

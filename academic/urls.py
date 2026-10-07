@@ -31,5 +31,6 @@ path('student/deliverable/<int:deliverable_id>/edit/', views.edit_deliverable, n
 path('student/claim/<int:claim_id>/verify/', views.verify_claim, name='verify_claim'),
     path('student/claim/<int:claim_id>/reject/', views.reject_claim, name='reject_claim'),
 
+path('student/team/<int:team_id>/evaluate/<int:teammate_id>/', views.evaluate_teammate, name='evaluate_teammate'),
 
 ]
