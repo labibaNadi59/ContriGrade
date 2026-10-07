@@ -18,6 +18,7 @@ path('student/courses/', views.student_courses, name='student_courses'),
     path('student/memberships/<int:membership_id>/role/', views.update_student_project_role, name='update_student_project_role'),
 path('student/team/<int:team_id>/repo/', views.update_team_repo, name='update_team_repo'),
 path('instructor/team/<int:team_id>/analytics/', views.team_analytics_dashboard, name='team_analytics_dashboard'),
+path('instructor/team/<int:team_id>/deliverables/', views.team_deliverables_review, name='team_deliverables_review'),
 path('instructor/project/<int:project_id>/report/', views.project_master_report, name='project_master_report'),
 path('instructor/reports/', views.reports_hub, name='reports_hub'),
 

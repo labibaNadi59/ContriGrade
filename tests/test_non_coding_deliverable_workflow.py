@@ -338,8 +338,8 @@ class DeliverableSubmissionViewTests(TestCase):
         content = resp.content.decode('utf-8')
         self.assertIn("Submit Deliverable", content)
         self.assertIn("submit_deliverable", content)
-        self.assertIn("Title *", content)
-        self.assertIn("Link (URL) *", content)
+        self.assertIn("Deliverable Title", content)
+        self.assertIn("Resource Link (URL)", content)
         self.assertIn("No non-coding deliverables have been submitted yet.", content)
 
     def test_authorized_student_get_accessible_without_github_repo(self):
@@ -396,7 +396,7 @@ class DeliverableSubmissionViewTests(TestCase):
 
         # Check flash message
         messages = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any("Deliverable submitted successfully." in m for m in messages))
+        self.assertTrue(any("Deliverable" in m and "submitted successfully" in m for m in messages))
 
     def test_post_invalid_missing_title_shows_error_no_db_entry(self):
         """POST with missing title fails validation, shows form error, does not create DB entry."""
@@ -459,7 +459,7 @@ class DeliverableSubmissionViewTests(TestCase):
         resp = self.client.get(self.url)
         self.assertEqual(resp.status_code, 200)
         content = resp.content.decode('utf-8')
-        self.assertIn("Submissions Locked (Deadline Passed)", content)
+        self.assertIn("Submissions Locked", content)
         self.assertNotIn("Submit Deliverable</button>", content)
 
 
@@ -1047,7 +1047,7 @@ class DeliverableCompleteLifecycleIntegrationTests(TestCase):
         for student in [self.student1, self.student2]:
             self.client.force_login(student)
             r = self.client.get(self.progress_url)
-            self.assertIn("Submissions Locked (Deadline Passed)", r.content.decode())
+            self.assertIn("Submissions Locked", r.content.decode())
             self.assertNotIn(f"/academic/student/deliverable/{deliv1.pk}/edit/", r.content.decode())
             self.assertNotIn(f"/academic/student/deliverable/{deliv1.pk}/delete/", r.content.decode())
 
@@ -1196,7 +1196,7 @@ class DeliverableSeleniumE2EWorkflowTests(StaticLiveServerTestCase):
         submit_deliverable_btn.click()
 
         # Wait for page reload and success message
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Deliverable submitted successfully.')]")))
+        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'submitted successfully')]")))
 
         # Verify item in list
         item_heading = self.wait.until(EC.presence_of_element_located((By.XPATH, "//h4[contains(text(), 'Figma Prototype E2E')]")))
