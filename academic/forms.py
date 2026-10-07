@@ -290,7 +290,19 @@ class NonCodingDeliverableForm(forms.ModelForm):
         model = NonCodingDeliverable
         fields = ['title', 'link', 'description']
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', 'placeholder': 'e.g., Figma UI Wireframes'}),
-            'link': forms.URLInput(attrs={'class': 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', 'placeholder': 'https://...'}),
-            'description': forms.Textarea(attrs={'class': 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', 'rows': 3, 'placeholder': 'Optional notes about this deliverable...'}),
+            'title': forms.TextInput(attrs={
+                'class': 'w-full rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm bg-white font-medium text-slate-700 transition-colors',
+                'placeholder': 'e.g., Figma UI Wireframes, SRS Document'
+            }),
+            'link': forms.URLInput(attrs={
+                'class': 'w-full rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm bg-white font-medium text-slate-700 transition-colors',
+                'placeholder': 'https://...'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'w-full rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm bg-white font-medium text-slate-700 transition-colors',
+                'rows': 3,
+                'placeholder': 'Provide a brief summary of what this deliverable contains...'
+            }),
         }
+
+
