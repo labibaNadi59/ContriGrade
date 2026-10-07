@@ -20,6 +20,59 @@
 <div class="max-w-4xl mx-auto">
     <h2 class="text-2xl font-bold mb-6">My Assessment Hub</h2>
 
+    <!-- NEW: Pending Verifications Alert Box -->
+    {% if pending_claims %}
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-slate-800 mb-3 flex items-center">
+                <i class="fa-solid fa-bell text-yellow-500 mr-2 animate-pulse"></i> Action Required: Pending Verifications
+            </h3>
+
+            <div class="space-y-3">
+                {% for claim in pending_claims %}
+                    <div class="bg-white border border-yellow-200 border-l-4 border-l-yellow-400 p-4 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:shadow-md">
+                        <div>
+                            <p class="text-[10px] font-bold text-yellow-600 uppercase tracking-wider mb-1">Contribution Claim</p>
+                            <p class="text-sm text-slate-800 mb-2">
+                                <span class="font-bold">{{ claim.deliverable.submitted_by.name }}</span> tagged you as a contributor in
+                                <a href="{{ claim.deliverable.link }}" target="_blank" class="font-bold text-blue-600 hover:underline"><i class="fa-solid fa-link text-xs mr-1"></i>{{ claim.deliverable.title }}</a>
+                                ({{ claim.deliverable.team.team_name }}).
+                            </p>
+                            <div class="text-sm bg-slate-50 inline-block px-3 py-1.5 rounded-lg border border-slate-100">
+                                <span class="font-bold text-slate-500 text-xs uppercase tracking-wider block mb-0.5">Claimed Area:</span>
+                                <span class="font-medium text-slate-700">{{ claim.contribution_area }}</span>
+                            </div>
+                        </div>
+
+                        {% if claim.deliverable.team.project.is_active %}
+                            <div class="flex gap-2 shrink-0 md:flex-col lg:flex-row">
+                                <!-- Using POST forms for security against CSRF attacks -->
+                                <form method="post" action="{% url 'verify_claim' claim.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="w-full lg:w-auto px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all hover:-translate-y-0.5">
+                                        <i class="fa-solid fa-check mr-1"></i> Verify
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'reject_claim' claim.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="w-full lg:w-auto px-4 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 text-xs font-bold rounded-lg shadow-sm transition-all hover:-translate-y-0.5">
+                                        <i class="fa-solid fa-xmark mr-1"></i> Reject
+                                    </button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <div class="shrink-0">
+                                <span class="inline-flex items-center text-xs font-bold px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 shadow-sm cursor-not-allowed">
+                                    <i class="fa-solid fa-lock mr-1.5"></i> Project Locked
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+<!------chnged here ----->
     {% if memberships %}
         <div class="space-y-6">
             {% for membership in memberships %}

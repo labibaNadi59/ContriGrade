@@ -27,6 +27,8 @@ path('ajax/load-project-students/', views.load_project_students, name='ajax_load
 path('instructor/project/<int:project_id>/edit/', views.edit_project, name='edit_project'),
 path('student/deliverable/<int:deliverable_id>/edit/', views.edit_deliverable, name='edit_deliverable'),
     path('student/deliverable/<int:deliverable_id>/delete/', views.delete_deliverable, name='delete_deliverable'),
+path('student/claim/<int:claim_id>/verify/', views.verify_claim, name='verify_claim'),
+    path('student/claim/<int:claim_id>/reject/', views.reject_claim, name='reject_claim'),
 
 
 ]
