@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
-from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable
+from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
     StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm
 from django.shortcuts import get_object_or_404
@@ -323,8 +323,6 @@ def dashboard_redirect(request):
     return render(request, 'academic/instructor_dashboard.html', context)
 
 
-
-
 @login_required
 @student_required
 def student_dashboard(request):
@@ -332,10 +330,54 @@ def student_dashboard(request):
     memberships = TeamMember.objects.filter(user=request.user).select_related(
         'team__project__section__course'
     )
+
+    # NEW: Fetch any pending claims where this specific user was tagged
+    pending_claims = DeliverableContribution.objects.filter(
+        student=request.user,
+        status='PENDING'
+    ).select_related('deliverable__team__project', 'deliverable__submitted_by')
+
     return render(request, 'academic/student_dashboard.html', {
         'user': request.user,
         'memberships': memberships,
+        'pending_claims': pending_claims,
     })
+
+
+@login_required
+@student_required
+def verify_claim(request, claim_id):
+    # Security: Ensure the claim actually belongs to the user clicking the button
+    claim = get_object_or_404(DeliverableContribution, pk=claim_id, student=request.user)
+
+    if request.method == 'POST':
+        # Security: Cannot verify if the project deadline has passed
+        if claim.deliverable.team.project.is_active():
+            claim.status = 'VERIFIED'
+            claim.save()
+            messages.success(request, f"Verified contribution for '{claim.deliverable.title}'.")
+        else:
+            messages.error(request, "Cannot verify. The project deadline has passed.")
+
+    return redirect('student_dashboard')
+
+
+@login_required
+@student_required
+def reject_claim(request, claim_id):
+    # Security: Ensure the claim actually belongs to the user clicking the button
+    claim = get_object_or_404(DeliverableContribution, pk=claim_id, student=request.user)
+
+    if request.method == 'POST':
+        # Security: Cannot reject if the project deadline has passed
+        if claim.deliverable.team.project.is_active():
+            claim.status = 'REJECTED'
+            claim.save()
+            messages.success(request, f"Rejected contribution for '{claim.deliverable.title}'.")
+        else:
+            messages.error(request, "Cannot reject. The project deadline has passed.")
+
+    return redirect('student_dashboard')
 
 
 @login_required
