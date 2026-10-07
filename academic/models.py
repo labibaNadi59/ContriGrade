@@ -138,3 +138,22 @@ class NonCodingDeliverable(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.team.team_name})"
+
+
+class DeliverableContribution(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending Verification'),
+        ('VERIFIED', 'Verified'),
+        ('REJECTED', 'Rejected'),
+    )
+
+    deliverable = models.ForeignKey(NonCodingDeliverable, on_delete=models.CASCADE, related_name='contributions')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    contribution_area = models.CharField(max_length=255,
+                                         help_text="e.g., Designed the database ERD, Wrote the abstract")
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.student.name} - {self.contribution_area} ({self.get_status_display()})"
+

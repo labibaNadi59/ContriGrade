@@ -60,7 +60,7 @@ def student_team_progress(request, team_id):
             error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
 
     # --- NEW: Non-Coding Deliverables Logic ---
-    deliverables = team.deliverables.all().order_by('-submitted_at')
+    deliverables = team.deliverables.all().order_by('-submitted_at').prefetch_related('contributions__student')
 
     if request.method == 'POST' and 'submit_deliverable' in request.POST:
         # Strict Deadline Enforcement
@@ -74,11 +74,34 @@ def student_team_progress(request, team_id):
             deliverable.team = team
             deliverable.submitted_by = request.user
             deliverable.save()
-            messages.success(request, "Deliverable submitted successfully.")
+
+            # Process Dynamic Teammate Contributions
+            teammate_ids = request.POST.getlist('teammate_id[]')
+            contribution_areas = request.POST.getlist('contribution_area[]')
+
+            # Fetch valid team members to prevent spoofing
+            valid_team_member_ids = set(team.members.values_list('pk', flat=True))
+
+            for t_id, area in zip(teammate_ids, contribution_areas):
+                if t_id and area:
+                    try:
+                        student_id = int(t_id)
+                        # Security: Ensure the tagged student is actually on this team
+                        if student_id in valid_team_member_ids:
+                            student = get_object_or_404(User, pk=student_id)
+                            DeliverableContribution.objects.create(
+                                deliverable=deliverable,
+                                student=student,
+                                contribution_area=area,
+                                status='PENDING'
+                            )
+                    except ValueError:
+                        pass  # Ignore invalid ID formats
+
+            messages.success(request, "Deliverable and contribution claims submitted successfully.")
             return redirect('student_team_progress', team_id=team.team_id)
     else:
         deliverable_form = NonCodingDeliverableForm()
-
     return render(request, 'academic/student_progress.html', {
         'team': team,
         'analytics': analytics_data,

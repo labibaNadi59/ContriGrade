@@ -89,20 +89,27 @@
             </div>
             <div class="divide-y divide-gray-100">
                 {% for pk, student in analytics.mapped_students.items %}
-                    <div class="p-5 flex items-center justify-between {% if request.user.pk == pk %}bg-blue-50/50{% endif %}">
+                    <div class="student-contrib-row p-5 flex items-center justify-between {% if request.user.pk == pk %}bg-blue-50/50{% endif %}"
+                         data-student-name="{{ student.name }}"
+                         data-student-impact="{{ student.impact_score|default:0 }}"
+                         data-additions="{{ student.total_additions|default:0 }}"
+                         data-deletions="{{ student.total_deletions|default:0 }}"
+                         data-commits="{{ student.commit_count|default:0 }}">
                         <div class="flex-1">
                             <h4 class="font-bold text-gray-900 text-lg flex items-center gap-2">
                                 {{ student.name }}
                                 {% if request.user.pk == pk %}<span class="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">You</span>{% endif %}
                             </h4>
                             <p class="text-sm text-gray-500 mt-0.5"><i class="fa-brands fa-github mr-1"></i> {{ student.github_username }}</p>
-                            
+
                             <!-- Progress Bar -->
                             <div class="mt-3 w-full bg-gray-200 rounded-full h-2.5 max-w-md">
-                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ student.percentage }}%"></div>
+                                <div class="student-progress-bar bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                                     data-progress="{{ student.percentage|default:0 }}"
+                                     style="width: 0%;"></div>
                             </div>
                         </div>
-                        
+
                         <div class="text-right">
                             <div class="flex items-center justify-end space-x-2 mb-1">
                                 <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-200" title="Lines Added">+{{ student.total_additions }}</span>
@@ -120,42 +127,99 @@
     <!-- NEW: Non-Coding Deliverables Section -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 mt-8">
             <!-- Left Side: Submission Form -->
+            <!-- Left Side: Submission Form -->
             <div class="lg:col-span-1">
-                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-full">
-                    <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Submit Deliverable</h3>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-md h-full flex flex-col relative overflow-hidden">
+                    <!-- Decorative top gradient -->
+                    <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
 
-                    {% if not team.project.is_active %}
-                        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center mb-4">
-                            <i class="fa-solid fa-lock mr-2"></i> Submissions Locked (Deadline Passed)
+                    <div class="p-6 flex-1 flex flex-col">
+                        <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                            <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
+                                <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-extrabold text-slate-800 text-lg">Submit Deliverable</h3>
+                                <p class="text-xs text-slate-500 font-medium mt-0.5">Upload files and tag contributors</p>
+                            </div>
                         </div>
-                    {% else %}
-                        <form method="post" action="">
-                            {% csrf_token %}
-                            <!-- Identifier to trigger the correct POST logic -->
-                            <input type="hidden" name="submit_deliverable" value="1">
 
-                            <div class="mb-4">
-                                <label class="block text-sm font-semibold text-gray-700 mb-1">Title *</label>
-                                {{ deliverable_form.title }}
-                                {% if deliverable_form.title.errors %}<p class="text-xs text-red-600 mt-1">{{ deliverable_form.title.errors.0 }}</p>{% endif %}
+                        {% if not team.project.is_active %}
+                            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-md mb-4 flex items-start">
+                                <i class="fa-solid fa-lock text-red-500 mt-1 mr-3"></i>
+                                <div>
+                                    <h4 class="text-sm font-bold text-red-800">Submissions Locked</h4>
+                                    <p class="text-xs text-red-700 mt-1">The deadline for this project has passed. You can no longer submit or edit deliverables.</p>
+                                </div>
                             </div>
+                        {% else %}
+                            <form method="post" action="" class="flex-1 flex flex-col">
+                                {% csrf_token %}
+                                <input type="hidden" name="submit_deliverable" value="1">
 
-                            <div class="mb-4">
-                                <label class="block text-sm font-semibold text-gray-700 mb-1">Link (URL) *</label>
-                                {{ deliverable_form.link }}
-                                {% if deliverable_form.link.errors %}<p class="text-xs text-red-600 mt-1">{{ deliverable_form.link.errors.0 }}</p>{% endif %}
-                            </div>
+                                <div class="space-y-5">
+                                    <!-- Title -->
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-1.5">Deliverable Title <span class="text-red-500">*</span></label>
+                                        {{ deliverable_form.title }}
+                                        {% if deliverable_form.title.errors %}
+                                            <p class="text-xs text-red-600 mt-1.5 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ deliverable_form.title.errors.0 }}</p>
+                                        {% endif %}
+                                    </div>
 
-                            <div class="mb-4">
-                                <label class="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                                {{ deliverable_form.description }}
-                            </div>
+                                    <!-- Link -->
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-1.5">Resource Link (URL) <span class="text-red-500">*</span></label>
+                                        {{ deliverable_form.link }}
+                                        {% if deliverable_form.link.errors %}
+                                            <p class="text-xs text-red-600 mt-1.5 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ deliverable_form.link.errors.0 }}</p>
+                                        {% endif %}
+                                    </div>
 
-                            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">
-                                Submit Deliverable
-                            </button>
-                        </form>
-                    {% endif %}
+                                    <!-- Description -->
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-1.5">Description</label>
+                                        {{ deliverable_form.description }}
+                                    </div>
+
+                                    <!-- Premium Dynamic Teammate Tagging -->
+                                    <div class="pt-4 border-t border-slate-100">
+                                        <div class="flex justify-between items-end mb-3">
+                                            <label class="block text-sm font-bold text-slate-700">Tag Contributions</label>
+                                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-0.5 rounded">Optional</span>
+                                        </div>
+
+                                        <div id="contributionFields" class="space-y-3 mb-3">
+                                            <!-- Single Contributor Card -->
+                                            <div class="contribution-card bg-slate-50 border border-slate-200 rounded-xl p-3.5 relative transition-all hover:border-indigo-300 hover:shadow-sm">
+                                                <div class="space-y-2.5">
+                                                    <select name="teammate_id[]" class="w-full rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm bg-white font-medium text-slate-700">
+                                                        <option value="">Select a teammate...</option>
+                                                        {% for member in team.members.all %}
+                                                            {% if member != request.user %}
+                                                                <option value="{{ member.pk }}">{{ member.name }}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                    <input type="text" name="contribution_area[]" placeholder="What did they do? (e.g., UI Design)" class="w-full rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button type="button" onclick="addContributionField()" class="w-full py-2.5 px-4 border-2 border-dashed border-slate-300 rounded-xl text-sm font-bold text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all flex justify-center items-center gap-2">
+                                            <i class="fa-solid fa-user-plus"></i> Add Another Teammate
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mt-8 pt-5 border-t border-slate-100">
+                                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2">
+                                        Submit Deliverable <i class="fa-solid fa-paper-plane ml-1"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
@@ -197,6 +261,37 @@
                                 {% if item.description %}
                                     <p class="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded border border-gray-100">{{ item.description }}</p>
                                 {% endif %}
+
+                                <!-- NEW: Tagged Contributions Display -->
+                                {% if item.contributions.all %}
+                                    <div class="mt-3 bg-white border border-gray-100 rounded-lg p-3">
+                                        <p class="text-xs font-bold text-gray-500 uppercase mb-2">Tagged Contributions:</p>
+                                        <ul class="space-y-2">
+                                            {% for claim in item.contributions.all %}
+                                                <li class="flex items-center justify-between text-sm">
+                                                    <div>
+                                                        <span class="font-semibold text-gray-800">{{ claim.student.name }}</span>
+                                                        <span class="text-gray-500 ml-1">- {{ claim.contribution_area }}</span>
+                                                    </div>
+                                                    {% if claim.status == 'PENDING' %}
+                                                        <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded shadow-sm">
+                                                            <i class="fa-solid fa-clock mr-1"></i> Pending
+                                                        </span>
+                                                    {% elif claim.status == 'VERIFIED' %}
+                                                        <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded shadow-sm">
+                                                            <i class="fa-solid fa-check mr-1"></i> Verified
+                                                        </span>
+                                                    {% elif claim.status == 'REJECTED' %}
+                                                        <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded shadow-sm">
+                                                            <i class="fa-solid fa-xmark mr-1"></i> Rejected
+                                                        </span>
+                                                    {% endif %}
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+
                             </div>
                         {% empty %}
                             <div class="p-8 text-center text-gray-500">
@@ -211,73 +306,129 @@
     </div>
 </div>
 
-<!-- Add Chart.js identical to the team_analytics.html setup -->
+{% if analytics %}
+    {{ analytics.chart_labels|json_script:"timelineChartLabels" }}
+    {{ analytics.chart_data|json_script:"timelineChartData" }}
+{% endif %}
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if(!document.getElementById('timelineChart')) return;
+    // NEW: Javascript to add more teammate contribution fields dynamically
+    function addContributionField() {
+        const container = document.getElementById('contributionFields');
+        const firstField = container.querySelector('.contribution-card').cloneNode(true);
 
-        const timelineCtx = document.getElementById('timelineChart').getContext('2d');
-        new Chart(timelineCtx, {
-            type: 'line',
-            data: {
-                labels: {{ analytics.chart_labels|safe }},
-                datasets: [{
-                    label: 'Commits per Day',
-                    data: {{ analytics.chart_data|safe }},
-                    borderColor: '#4F46E5', backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                    borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#4F46E5', pointRadius: 4
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+
+        firstField.querySelector('select').value = '';
+        firstField.querySelector('input').value = '';
+
+
+        firstField.style.opacity = '0';
+        container.appendChild(firstField);
+
+
+        setTimeout(() => {
+            firstField.style.transition = 'opacity 0.3s ease-in';
+            firstField.style.opacity = '1';
+        }, 10);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update student progress bars
+        document.querySelectorAll('.student-progress-bar').forEach(function(bar) {
+            const progress = bar.getAttribute('data-progress') || '0';
+            bar.style.width = progress + '%';
         });
 
-        const studentNames = [];
-        const studentImpact = [];
+        // 1. Timeline Chart (Line)
+        const timelineEl = document.getElementById('timelineChart');
+        if (timelineEl) {
+            const labelsDataEl = document.getElementById('timelineChartLabels');
+            const countsDataEl = document.getElementById('timelineChartData');
+            const timelineLabels = labelsDataEl ? JSON.parse(labelsDataEl.textContent) : [];
+            const timelineData = countsDataEl ? JSON.parse(countsDataEl.textContent) : [];
 
-        {% for pk, student in analytics.mapped_students.items %}
-            studentNames.push("{{ student.name|escapejs }}");
-
-            {
-                let linesAdded = {{ student.total_additions|default:0 }};
-                let linesDeleted = {{ student.total_deletions|default:0 }};
-                let commitCount = {{ student.commit_count|default:0 }};
-
-                // COMPREHENSIVE IMPACT SCORE: Combines all 3 metrics
-                let totalImpact = linesAdded + linesDeleted + commitCount;
-
-                studentImpact.push(totalImpact);
-            }
-        {% endfor %}
-
-        const splitCtx = document.getElementById('splitChart').getContext('2d');
-        new Chart(splitCtx, {
-            type: 'doughnut',
-            data: {
-                labels: studentNames,
-                datasets: [{
-                    data: studentImpact,
-                    backgroundColor: ['#2563EB', '#16A34A', '#EAB308', '#9333EA', '#DB2777', '#EA580C'],
-                    borderWidth: 0, hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-                    // NEW: Update the tooltip to explain the combined score
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return ` ${context.label}: ${context.raw} Impact Score (Commits + Lines)`;
-                            }
+            const timelineCtx = timelineEl.getContext('2d');
+            new Chart(timelineCtx, {
+                type: 'line',
+                data: {
+                    labels: timelineLabels,
+                    datasets: [{
+                        label: 'Commits per Day',
+                        data: timelineData,
+                        borderColor: '#4F46E5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#4F46E5',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
                         }
                     }
+                }
+            });
+        }
+
+        // 2. Workload Split Chart (Doughnut)
+        const splitEl = document.getElementById('splitChart');
+        if (splitEl) {
+            const studentNames = [];
+            const studentImpact = [];
+
+            document.querySelectorAll('.student-contrib-row').forEach(function(row) {
+                studentNames.push(row.getAttribute('data-student-name') || '');
+
+                const impactAttr = row.getAttribute('data-student-impact');
+                let impact = impactAttr !== null ? Number(impactAttr) : 0;
+                if (!impact) {
+                    const additions = Number(row.getAttribute('data-additions')) || 0;
+                    const deletions = Number(row.getAttribute('data-deletions')) || 0;
+                    const commits = Number(row.getAttribute('data-commits')) || 0;
+                    impact = additions + deletions + commits;
+                }
+                studentImpact.push(impact);
+            });
+
+            const splitCtx = splitEl.getContext('2d');
+            new Chart(splitCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: studentNames,
+                    datasets: [{
+                        data: studentImpact,
+                        backgroundColor: ['#2563EB', '#16A34A', '#EAB308', '#9333EA', '#DB2777', '#EA580C'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
                 },
-                cutout: '70%'
-            }
-        });
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${context.raw} Impact Score (Commits + Lines)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
     });
 </script>
 {% endblock %}
+
