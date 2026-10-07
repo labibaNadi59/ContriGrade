@@ -193,7 +193,7 @@
                                             <!-- Single Contributor Card -->
                                             <div class="contribution-card bg-slate-50 border border-slate-200 rounded-xl p-3.5 relative transition-all hover:border-indigo-300 hover:shadow-sm">
                                                 <div class="space-y-2.5">
-                                                    <select name="teammate_id[]" class="w-full rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm bg-white font-medium text-slate-700">
+                                                    <select name="teammate_id[]" onchange="this.parentElement.querySelector('input').required = !!this.value;" class="w-full rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm bg-white font-medium text-slate-700">
                                                         <option value="">Select a teammate...</option>
                                                         {% for member in team.members.all %}
                                                             {% if member != request.user %}
@@ -318,14 +318,16 @@
         const container = document.getElementById('contributionFields');
         const firstField = container.querySelector('.contribution-card').cloneNode(true);
 
+        const selectBox = firstField.querySelector('select');
+        const inputBox = firstField.querySelector('input');
 
-        firstField.querySelector('select').value = '';
-        firstField.querySelector('input').value = '';
-
+        // Reset the values and validation state so the new card is blank
+        selectBox.value = '';
+        inputBox.value = '';
+        inputBox.required = false;
 
         firstField.style.opacity = '0';
         container.appendChild(firstField);
-
 
         setTimeout(() => {
             firstField.style.transition = 'opacity 0.3s ease-in';

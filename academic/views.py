@@ -12,7 +12,7 @@ from .utils import fetch_team_commits, analyze_team_contributions
 import csv
 from django.http import HttpResponse
 from django.http import JsonResponse
-
+from django.db.models import Prefetch
 
 @login_required
 def load_project_students(request):
@@ -37,6 +37,7 @@ def load_project_students(request):
 
     return JsonResponse({'students': student_list})
 
+
 @login_required
 @student_required
 def student_team_progress(request, team_id):
@@ -53,13 +54,13 @@ def student_team_progress(request, team_id):
     else:
         fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
         if fetch_result['status'] == 'success':
-            recent_commits = fetch_result['commits']  # Fetching all commits based on our earlier fix
+            recent_commits = fetch_result['commits']
             analytics_data = analyze_team_contributions(team, fetch_result['commits'])
             analytics_data['total_branches'] = fetch_result.get('total_branches', 1)
         else:
             error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
 
-    # --- NEW: Non-Coding Deliverables Logic ---
+    # --- Non-Coding Deliverables Logic ---
     deliverables = team.deliverables.all().order_by('-submitted_at').prefetch_related('contributions__student')
 
     if request.method == 'POST' and 'submit_deliverable' in request.POST:
@@ -70,20 +71,29 @@ def student_team_progress(request, team_id):
 
         deliverable_form = NonCodingDeliverableForm(request.POST)
         if deliverable_form.is_valid():
+
+            # --- 1. STRICT BACKEND VALIDATION: Must specify what teammate did ---
+            teammate_ids = request.POST.getlist('teammate_id[]')
+            contribution_areas = request.POST.getlist('contribution_area[]')
+
+            for t_id, area in zip(teammate_ids, contribution_areas):
+                # If a teammate is selected, but the text area is empty or just spaces
+                if t_id and not area.strip():
+                    messages.error(request,
+                                   "Submission failed: You must describe the contribution area for each selected teammate.")
+                    return redirect('student_team_progress', team_id=team.team_id)
+            # --------------------------------------------------------------------
+
             deliverable = deliverable_form.save(commit=False)
             deliverable.team = team
             deliverable.submitted_by = request.user
             deliverable.save()
 
-            # Process Dynamic Teammate Contributions
-            teammate_ids = request.POST.getlist('teammate_id[]')
-            contribution_areas = request.POST.getlist('contribution_area[]')
-
-            # Fetch valid team members to prevent spoofing
+            # --- 2. Process Dynamic Teammate Contributions ---
             valid_team_member_ids = set(team.members.values_list('pk', flat=True))
 
             for t_id, area in zip(teammate_ids, contribution_areas):
-                if t_id and area:
+                if t_id and area.strip():
                     try:
                         student_id = int(t_id)
                         # Security: Ensure the tagged student is actually on this team
@@ -92,16 +102,17 @@ def student_team_progress(request, team_id):
                             DeliverableContribution.objects.create(
                                 deliverable=deliverable,
                                 student=student,
-                                contribution_area=area,
+                                contribution_area=area.strip(),
                                 status='PENDING'
                             )
                     except ValueError:
-                        pass  # Ignore invalid ID formats
+                        pass
 
-            messages.success(request, "Deliverable and contribution claims submitted successfully.")
+            messages.success(request, "Deliverable and contributions submitted successfully.")
             return redirect('student_team_progress', team_id=team.team_id)
     else:
         deliverable_form = NonCodingDeliverableForm()
+
     return render(request, 'academic/student_progress.html', {
         'team': team,
         'analytics': analytics_data,
@@ -110,7 +121,6 @@ def student_team_progress(request, team_id):
         'deliverable_form': deliverable_form,
         'deliverables': deliverables,
     })
-
 
 
 
@@ -694,4 +704,37 @@ def delete_deliverable(request, deliverable_id):
 
     return render(request, 'academic/delete_deliverable.html', {
         'deliverable': deliverable
+    })
+
+
+@login_required
+def team_deliverables_review(request, team_id):
+    # Security: Ensure only instructors or admins can access this page
+    if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
+        messages.error(request, "Access denied. Instructor privileges required.")
+        return redirect('student_dashboard')
+
+    team = get_object_or_404(Team, pk=team_id)
+    current_filter = request.GET.get('status', 'ALL')
+
+    # Build the filter query for the contribution claims
+    contributions_query = DeliverableContribution.objects.select_related('student')
+    if current_filter in ['PENDING', 'VERIFIED', 'REJECTED']:
+        contributions_query = contributions_query.filter(status=current_filter)
+
+    # Fetch deliverables and attach ONLY the claims that match our filter
+    deliverables_qs = team.deliverables.select_related('submitted_by').prefetch_related(
+        Prefetch('contributions', queryset=contributions_query, to_attr='filtered_contributions')
+    ).order_by('-submitted_at')
+
+    # If filtering, hide deliverables that don't have any matching claims
+    if current_filter != 'ALL':
+        deliverables = [d for d in deliverables_qs if d.filtered_contributions]
+    else:
+        deliverables = deliverables_qs
+
+    return render(request, 'academic/team_deliverables.html', {
+        'team': team,
+        'deliverables': deliverables,
+        'current_filter': current_filter,
     })
