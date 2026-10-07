@@ -3,32 +3,115 @@
 {% block title %}Edit Project - ContriGrade{% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto mt-8">
-    <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-        <div class="flex items-center gap-3 mb-6 border-b pb-4">
-            <a href="{% url 'dashboard_redirect' %}" class="text-gray-400 hover:text-blue-600 transition">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-            <h2 class="text-xl font-bold">Edit Project Details</h2>
+<div class="max-w-5xl mx-auto mt-8">
+
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{% url 'dashboard_redirect' %}" class="text-gray-400 hover:text-blue-600 transition">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Two-Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        <!-- Left Column: Project Details -->
+        <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 h-fit relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-500"></div>
+
+            <h2 class="text-xl font-bold mb-6 border-b pb-4">Edit Project Details</h2>
+
+            <form method="post" action="">
+                {% csrf_token %}
+                <input type="hidden" name="update_project" value="1">
+
+                <div class="space-y-4">
+                    {{ form.as_p }}
+                </div>
+
+                <div class="mt-8 flex gap-3 border-t pt-6">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-lg hover:bg-blue-700 transition shadow-sm">
+                        Save Project Changes
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <form method="post">
-            {% csrf_token %}
-            <div class="space-y-4">
-                {{ form.as_p }}
+        <!-- Right Column: Peer Evaluation Criteria -->
+        <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 h-fit relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-indigo-500"></div>
+
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Peer Evaluation Criteria</h2>
+            <p class="text-sm text-slate-500 mb-6 border-b pb-4">Define the specific metrics students must use to anonymously evaluate their teammates.</p>
+
+            <!-- Active Criteria List -->
+            <div class="space-y-3 mb-8">
+                {% for c in criteria %}
+                    <div class="p-4 border border-slate-200 rounded-xl bg-slate-50 flex justify-between items-start transition hover:border-indigo-300">
+                        <div>
+                            <div class="font-bold text-slate-800 flex items-center">
+                                {{ c.name }}
+                                <span class="text-[10px] font-bold text-indigo-700 bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded ml-2 uppercase tracking-wider">
+                                    Max Score: {{ c.max_score }}
+                                </span>
+                            </div>
+                            {% if c.description %}
+                                <div class="text-xs text-slate-500 mt-1.5 leading-relaxed">{{ c.description }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Delete Button -->
+                        <form method="post" action="" class="shrink-0 ml-4">
+                            {% csrf_token %}
+                            <button type="submit" name="delete_criterion" value="{{ c.pk }}" class="text-red-500 hover:text-red-700 hover:bg-red-50 transition px-2.5 py-1.5 bg-white rounded-lg border border-red-200 shadow-sm" onclick="return confirm('Are you sure you want to delete this criterion?');" title="Delete Criterion">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                        </form>
+                    </div>
+                {% empty %}
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-bold text-amber-800">No Criteria Configured</p>
+                            <p class="text-xs text-amber-700 mt-1">Students cannot submit peer evaluations until you add at least one criterion below.</p>
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
-            
-            <div class="mt-8 flex gap-3">
-                <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-lg hover:bg-blue-700 transition">
-                    Save Changes
-                </button>
-                <a href="{% url 'dashboard_redirect' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition">
-                    Cancel
-                </a>
+
+            <!-- Add New Criterion Form -->
+            <div class="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-indigo-500"></i> Add New Criterion
+                </h3>
+
+                <form method="post" action="">
+                    {% csrf_token %}
+                    <input type="hidden" name="add_criterion" value="1">
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">Metric Name <span class="text-red-500">*</span></label>
+                            <input type="text" name="criterion_name" required placeholder="e.g., Communication, Technical Skill" class="w-full rounded-lg border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm text-sm font-medium">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">Maximum Score <span class="text-red-500">*</span></label>
+                            <input type="number" name="criterion_max_score" required min="1" max="100" value="5" class="w-full rounded-lg border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm text-sm font-medium">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">Description <span class="text-[10px] font-bold text-slate-400 bg-slate-200 px-2 py-0.5 rounded ml-1 uppercase tracking-wider">Optional</span></label>
+                            <textarea name="criterion_description" rows="2" class="w-full rounded-lg border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm text-sm" placeholder="Explain what this metric measures..."></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-lg hover:bg-indigo-700 transition text-sm shadow-sm">
+                            Add Criterion
+                        </button>
+                    </div>
+                </form>
             </div>
-        </form>
+
+        </div>
     </div>
 </div>
 {% endblock %}
-
-
