@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import student_required
-from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution
+from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution,EvaluationCriterion, PeerEvaluation, PeerEvaluationScore
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
     StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm
 from django.shortcuts import get_object_or_404
@@ -41,7 +41,6 @@ def load_project_students(request):
 @login_required
 @student_required
 def student_team_progress(request, team_id):
-    # Securely fetch only the team this student belongs to
     team = get_object_or_404(Team, pk=team_id, members=request.user)
 
     recent_commits = []
@@ -60,58 +59,52 @@ def student_team_progress(request, team_id):
         else:
             error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
 
-    # --- Non-Coding Deliverables Logic ---
     deliverables = team.deliverables.all().order_by('-submitted_at').prefetch_related('contributions__student')
 
     if request.method == 'POST' and 'submit_deliverable' in request.POST:
-        # Strict Deadline Enforcement
         if not team.project.is_active():
             messages.error(request, f"Submissions locked. The deadline for {team.project.title} has passed.")
             return redirect('student_team_progress', team_id=team.team_id)
 
         deliverable_form = NonCodingDeliverableForm(request.POST)
         if deliverable_form.is_valid():
-
-            # --- 1. STRICT BACKEND VALIDATION: Must specify what teammate did ---
             teammate_ids = request.POST.getlist('teammate_id[]')
             contribution_areas = request.POST.getlist('contribution_area[]')
 
             for t_id, area in zip(teammate_ids, contribution_areas):
-                # If a teammate is selected, but the text area is empty or just spaces
                 if t_id and not area.strip():
                     messages.error(request,
                                    "Submission failed: You must describe the contribution area for each selected teammate.")
                     return redirect('student_team_progress', team_id=team.team_id)
-            # --------------------------------------------------------------------
 
             deliverable = deliverable_form.save(commit=False)
             deliverable.team = team
             deliverable.submitted_by = request.user
             deliverable.save()
 
-            # --- 2. Process Dynamic Teammate Contributions ---
             valid_team_member_ids = set(team.members.values_list('pk', flat=True))
-
             for t_id, area in zip(teammate_ids, contribution_areas):
                 if t_id and area.strip():
                     try:
                         student_id = int(t_id)
-                        # Security: Ensure the tagged student is actually on this team
                         if student_id in valid_team_member_ids:
                             student = get_object_or_404(User, pk=student_id)
                             DeliverableContribution.objects.create(
-                                deliverable=deliverable,
-                                student=student,
-                                contribution_area=area.strip(),
+                                deliverable=deliverable, student=student, contribution_area=area.strip(),
                                 status='PENDING'
                             )
                     except ValueError:
                         pass
 
-            messages.success(request, "Deliverable and contributions submitted successfully.")
+            messages.success(request, "Deliverable submitted successfully.")
             return redirect('student_team_progress', team_id=team.team_id)
     else:
         deliverable_form = NonCodingDeliverableForm()
+
+    # --- NEW: Get IDs of teammates this user has already evaluated ---
+    evaluated_ids = PeerEvaluation.objects.filter(
+        team=team, evaluator=request.user
+    ).values_list('evaluatee_id', flat=True)
 
     return render(request, 'academic/student_progress.html', {
         'team': team,
@@ -120,8 +113,71 @@ def student_team_progress(request, team_id):
         'error_message': error_message,
         'deliverable_form': deliverable_form,
         'deliverables': deliverables,
+        'evaluated_ids': evaluated_ids,  # Passed to the template
     })
 
+
+@login_required
+@student_required
+def evaluate_teammate(request, team_id, teammate_id):
+    team = get_object_or_404(Team, pk=team_id, members=request.user)
+    teammate = get_object_or_404(User, pk=teammate_id, student_teams=team)
+
+    # Security Checks
+    if teammate == request.user:
+        messages.error(request, "You cannot evaluate yourself.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    if not team.project.is_active():
+        messages.error(request, "Peer evaluations are locked. The deadline has passed.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    if PeerEvaluation.objects.filter(team=team, evaluator=request.user, evaluatee=teammate).exists():
+        messages.error(request, f"You have already submitted an evaluation for {teammate.name}.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    criteria = team.project.evaluation_criteria.all()
+    if not criteria.exists():
+        messages.warning(request, "Your instructor has not configured evaluation criteria for this project yet.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    # Create a list of tuples: (criterion, [1, 2, 3... max_score]) to build dynamic dropdowns in HTML
+    criteria_with_ranges = [(c, range(1, c.max_score + 1)) for c in criteria]
+
+    if request.method == 'POST':
+        scores_to_create = []
+        for criterion in criteria:
+            score_val = request.POST.get(f'criterion_{criterion.pk}')
+            if not score_val:
+                messages.error(request, f"You must provide a score for: {criterion.name}")
+                return redirect('evaluate_teammate', team_id=team.team_id, teammate_id=teammate.pk)
+
+            scores_to_create.append(PeerEvaluationScore(
+                criterion=criterion,
+                score=int(score_val)
+            ))
+
+        # Save the Evaluation (Anonymous to the evaluatee)
+        evaluation = PeerEvaluation.objects.create(
+            team=team,
+            evaluator=request.user,
+            evaluatee=teammate,
+            general_feedback=request.POST.get('general_feedback', '')
+        )
+
+        # Bulk save the scores
+        for score in scores_to_create:
+            score.evaluation = evaluation
+        PeerEvaluationScore.objects.bulk_create(scores_to_create)
+
+        messages.success(request, f"Anonymous evaluation for {teammate.name} submitted successfully.")
+        return redirect('student_team_progress', team_id=team.team_id)
+
+    return render(request, 'academic/evaluate_teammate.html', {
+        'team': team,
+        'teammate': teammate,
+        'criteria_with_ranges': criteria_with_ranges,
+    })
 
 
 @login_required
@@ -619,6 +675,7 @@ def update_student_project_role(request, membership_id):
         'membership': membership,
     })
 
+
 @login_required
 def edit_project(request, project_id):
     # Security: Ensure only instructors or coordinators access this
@@ -633,23 +690,51 @@ def edit_project(request, project_id):
         messages.error(request, "You can only edit projects assigned to your sections.")
         return redirect('dashboard_redirect')
 
+    # Fetch existing criteria
+    criteria = project.evaluation_criteria.all()
+
     if request.method == 'POST':
-        # Pass both request.POST and the existing project instance
-        form = ProjectForm(request.POST, instance=project, user=request.user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, f"Successfully updated '{project.title}'.")
-            return redirect('dashboard_redirect')
+        # ACTION 1: Edit Project Details
+        if 'update_project' in request.POST:
+            form = ProjectForm(request.POST, instance=project, user=request.user)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f"Successfully updated '{project.title}'.")
+                return redirect('dashboard_redirect')
+
+        # ACTION 2: Add New Criterion
+        elif 'add_criterion' in request.POST:
+            name = request.POST.get('criterion_name')
+            description = request.POST.get('criterion_description', '')
+            max_score = request.POST.get('criterion_max_score', 5)
+
+            if name:
+                EvaluationCriterion.objects.create(
+                    project=project,
+                    name=name.strip(),
+                    description=description.strip(),
+                    max_score=int(max_score)
+                )
+                messages.success(request, f"Added peer evaluation criterion: '{name}'.")
+            return redirect('edit_project', project_id=project.project_id)
+
+        # ACTION 3: Delete Criterion
+        elif 'delete_criterion' in request.POST:
+            crit_id = request.POST.get('delete_criterion')
+            criterion = get_object_or_404(EvaluationCriterion, pk=crit_id, project=project)
+            criterion_name = criterion.name
+            criterion.delete()
+            messages.success(request, f"Deleted criterion: '{criterion_name}'.")
+            return redirect('edit_project', project_id=project.project_id)
     else:
         # Pre-fill the form with existing data
         form = ProjectForm(instance=project, user=request.user)
 
     return render(request, 'academic/edit_project.html', {
         'form': form,
-        'project': project
+        'project': project,
+        'criteria': criteria,
     })
-
-
 
 
 @login_required
