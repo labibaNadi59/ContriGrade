@@ -13,6 +13,65 @@ import csv
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.db.models import Prefetch
+from django.db.models import Avg
+
+
+@login_required
+def team_peer_evaluations(request, team_id):
+    # Strict Access Control
+    if request.user.role not in ['INSTRUCTOR', 'COORDINATOR', 'ADMIN']:
+        messages.error(request, "Access denied. Instructor privileges required.")
+        return redirect('dashboard_redirect')
+
+    team = get_object_or_404(Team, pk=team_id)
+    students = team.members.all()
+    criteria = team.project.evaluation_criteria.all()
+
+    # A student should be evaluated by everyone else on the team
+    expected_evaluations = max(0, students.count() - 1)
+
+    assessment_data = []
+
+    for student in students:
+        # Fetch all evaluations targeting this student
+        received_evals = PeerEvaluation.objects.filter(team=team, evaluatee=student)
+        received_count = received_evals.count()
+
+        # 1. Calculate Average Scores per Criterion
+        scores_breakdown = []
+        for c in criteria:
+            avg_score = PeerEvaluationScore.objects.filter(
+                evaluation__in=received_evals,
+                criterion=c
+            ).aggregate(Avg('score'))['score__avg']
+
+            safe_avg = round(avg_score, 1) if avg_score else 0
+            percentage = (safe_avg / c.max_score * 100) if c.max_score > 0 else 0
+
+            scores_breakdown.append({
+                'criterion_name': c.name,
+                'max_score': c.max_score,
+                'avg_score': safe_avg,
+                'percentage': percentage
+            })
+
+        # 2. Extract Anonymous Feedback (Filtering out empty ones)
+        feedback_list = received_evals.exclude(general_feedback='').values_list('general_feedback', flat=True)
+
+        assessment_data.append({
+            'student': student,
+            'received_count': received_count,
+            'expected_count': expected_evaluations,
+            'is_complete': received_count >= expected_evaluations if expected_evaluations > 0 else True,
+            'scores_breakdown': scores_breakdown,
+            'feedback_list': list(feedback_list)
+        })
+
+    return render(request, 'academic/team_peer_evaluations.html', {
+        'team': team,
+        'assessment_data': assessment_data,
+        'criteria': criteria,
+    })
 
 @login_required
 def load_project_students(request):
@@ -30,7 +89,8 @@ def load_project_students(request):
             for student in students:
                 student_list.append({
                     'id': student.pk,
-                    'name': student.name or student.username
+                    'name': student.name or student.username,
+                    'email': student.email
                 })
         except Project.DoesNotExist:
             pass
@@ -521,13 +581,33 @@ def team_management(request):
     }
     return render(request, 'academic/team_management.html', context)
 
+
+@login_required
 def team_edit(request, team_id):
+    # Security 1: Ensure only instructors/coordinators can access team editing
+    if request.user.role not in ['INSTRUCTOR', 'COORDINATOR']:
+        messages.error(request, "Access denied.")
+        return redirect('dashboard_redirect')
 
     team = get_object_or_404(Team, team_id=team_id)
     error_message = None
 
+    # Security 2: Ensure the instructor actually owns the section this team belongs to
+    if request.user.role == 'INSTRUCTOR' and team.project.section.instructor != request.user:
+        messages.error(request, "You can only edit teams assigned to your own sections.")
+        return redirect('team_management')
+
     if request.method == 'POST':
-        form = TeamForm(request.POST, instance=team)
+
+        if 'delete_team' in request.POST:
+            team_name = team.team_name
+            team.delete()  # This will securely delete the team and cascade to associated evaluations
+            messages.success(request, f"Successfully deleted team: '{team_name}'.")
+            return redirect('team_management')
+
+        # FIX: Pass user=request.user here so the dropdown filters securely!
+        form = TeamForm(request.POST, instance=team, user=request.user)
+
         if form.is_valid():
             team = form.save()
             selected_students = form.cleaned_data['members']
@@ -550,7 +630,8 @@ def team_edit(request, team_id):
             if not error_message:
                 return redirect('team_management')
     else:
-        form = TeamForm(instance=team)
+        # FIX: Pass user=request.user here for GET requests too!
+        form = TeamForm(instance=team, user=request.user)
 
     context = {
         'form': form,
@@ -726,6 +807,13 @@ def edit_project(request, project_id):
             criterion.delete()
             messages.success(request, f"Deleted criterion: '{criterion_name}'.")
             return redirect('edit_project', project_id=project.project_id)
+
+        # ACTION 4: Delete Entire Project
+        elif 'delete_project' in request.POST:
+            project_title = project.title
+            project.delete()  # This cascades and deletes teams, deliverables, and peer evaluations automatically
+            messages.success(request, f"Successfully deleted project: '{project_title}'.")
+            return redirect('dashboard_redirect')
     else:
         # Pre-fill the form with existing data
         form = ProjectForm(instance=project, user=request.user)

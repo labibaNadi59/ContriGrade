@@ -24,113 +24,236 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto">
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold">Team Management</h2>
-        <p class="text-gray-600 text-sm">Create project teams and assign student members.</p>
+
+    <!-- Page Header & Actions -->
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-extrabold text-slate-900">Team Management</h2>
+            <p class="text-slate-500 text-sm mt-1">Create project teams and assign student members.</p>
+        </div>
+
+        <!-- Toggle Button -->
+        <button onclick="toggleCreateForm()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-sm transition flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> New Team
+        </button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Team Creation Form -->
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 col-span-1 h-fit">
-            <h3 class="text-base font-bold mb-4 border-b pb-2">Create a New Team</h3>
-            
+    <!-- Hidden Create Team Form Panel -->
+    <div id="createTeamPanel" class="{% if not form.errors and not error_message %}hidden{% endif %} mb-8 transition-all duration-300">
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-green-200 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
+
+            <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-users-viewfinder text-green-500 mr-2"></i>Create a New Team</h3>
+                <button onclick="toggleCreateForm()" class="text-slate-400 hover:text-red-500 transition px-2">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
             {% if error_message %}
-                <div class="bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 mb-4 text-xs">{{ error_message }}</div>
+                <div class="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 mb-6 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation"></i> {{ error_message }}
+                </div>
             {% endif %}
 
             <form method="post">
                 {% csrf_token %}
-                {{ form.as_p }}
-                <button type="submit" class="mt-4 w-full bg-green-600 text-white font-bold py-2 text-sm rounded-lg hover:bg-green-700 transition">
-                    Create Team & Assign
-                </button>
+                <div class="space-y-4 max-w-3xl">
+                    {{ form.as_p }}
+                </div>
+
+                <div class="mt-8 flex justify-end">
+                    <button type="submit" class="bg-green-600 text-white font-bold py-2.5 px-8 rounded-xl hover:bg-green-700 transition shadow-sm flex items-center gap-2">
+                        Create Team & Assign <i class="fa-solid fa-check"></i>
+                    </button>
+                </div>
             </form>
         </div>
+    </div>
 
-        <!-- Team List View -->
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 col-span-2">
-            <h3 class="text-base font-bold mb-4 border-b pb-2">Active Teams</h3>
-            {% if teams %}
-                <div class="space-y-4">
-                    {% for team in teams %}
-                        <div class="p-4 border border-gray-100 rounded-lg bg-gray-50 flex justify-between items-start">
-                            <div>
-                                <h4 class="font-bold text-blue-600 text-base">{{ team.team_name }}</h4>
-                                <!-- Analytics Button for Team Management Page -->
-<a href="{% url 'team_analytics_dashboard' team.pk %}" class="inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 transition shadow-sm ml-3">
-    <i class="fa-solid fa-chart-pie mr-1.5"></i>
-    View Analytics
-</a>
-                                <p class="text-xs text-gray-600 mb-2">Project: {{ team.project.title }}</p>
-                                
-                                <h5 class="font-semibold text-xs text-gray-700 mt-3 border-b pb-1">Assigned Students:</h5>
-                                <ul class="list-disc list-inside text-xs text-gray-600 mt-2 space-y-1">
+    <!-- Active Teams List (Full Width) -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-users-rectangle text-indigo-500"></i> Active Teams
+            </h3>
+            <span class="text-xs font-bold text-slate-500 bg-slate-200 px-2.5 py-1 rounded-full">{{ teams|length }} Total</span>
+        </div>
+
+        {% if teams %}
+            <div class="divide-y divide-slate-100">
+                {% for team in teams %}
+                    <div class="p-5 hover:bg-slate-50 transition flex flex-col md:flex-row justify-between items-start gap-4">
+
+                        <!-- Left Side: Info -->
+                        <div class="flex-1">
+                            <h4 class="font-extrabold text-lg text-slate-900 mb-1">{{ team.team_name }}</h4>
+                            <p class="text-sm font-semibold text-blue-600 flex items-center gap-1.5 mb-4">
+                                <i class="fa-regular fa-folder-open"></i> Project: {{ team.project.title }}
+                            </p>
+
+                            <!-- Assigned Students Box -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-4 inline-block min-w-full sm:min-w-[300px]">
+                                <h5 class="font-bold text-[11px] text-slate-400 uppercase tracking-wider mb-2">Assigned Students ({{ team.members.count }})</h5>
+                                <ul class="space-y-1.5">
                                     {% for member in team.members.all %}
-                                        <li>{{ member.name }} ({{ member.email }})</li>
+                                        <li class="flex items-center gap-2 text-sm text-slate-700">
+                                            <i class="fa-solid fa-circle-user text-slate-300"></i>
+                                            <span class="font-semibold">{{ member.name }}</span>
+                                            <span class="text-xs text-slate-400">({{ member.email }})</span>
+                                        </li>
                                     {% empty %}
-                                        <li class="text-gray-400 italic">No students assigned yet.</li>
+                                        <li class="text-slate-400 italic text-sm">No students assigned yet.</li>
                                     {% endfor %}
                                 </ul>
                             </div>
-                            <div>
-                                <a href="{% url 'team_edit' team.team_id %}" class="bg-yellow-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-yellow-600 transition shadow-sm">
-                                    Edit Team
-                                </a>
-                            </div>
                         </div>
-                    {% endfor %}
+
+                        <!-- Right Side: Action Buttons -->
+                        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+                            <!-- Edit Team Button -->
+                            <a href="{% url 'team_edit' team.team_id %}" class="inline-flex justify-center items-center text-xs font-bold px-4 py-2 rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 hover:text-blue-600 transition shadow-sm h-fit">
+                                <i class="fa-solid fa-pen-to-square mr-1.5"></i> Edit Settings
+                            </a>
+
+                            <!-- Analytics Button -->
+                            <a href="{% url 'team_analytics_dashboard' team.pk %}" class="inline-flex justify-center items-center text-xs font-bold px-4 py-2 rounded-lg border border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 transition shadow-sm h-fit">
+                                <i class="fa-solid fa-chart-pie mr-1.5"></i> View Analytics
+                            </a>
+                        </div>
+
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="p-12 text-center">
+                <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-users-slash text-3xl text-slate-300"></i>
                 </div>
-            {% else %}
-                <p class="text-gray-500 text-sm">No teams have been created yet.</p>
-            {% endif %}
-        </div>
+                <h4 class="text-lg font-bold text-slate-700 mb-1">No Teams Created</h4>
+                <p class="text-sm text-slate-500 mb-6">Start by creating a team and assigning students to a project.</p>
+                <button onclick="toggleCreateForm()" class="bg-white border border-slate-300 text-slate-700 font-bold py-2 px-6 rounded-lg hover:bg-slate-50 transition shadow-sm">
+                    Create Your First Team
+                </button>
+            </div>
+        {% endif %}
     </div>
 </div>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Django ModelForms automatically name inputs id_<fieldname>
-        const projectDropdown = document.getElementById('id_project');
-        const membersDropdown = document.getElementById('id_members');
 
-        if (projectDropdown && membersDropdown) {
+<script>
+    // Toggle the Create Team Form
+    function toggleCreateForm() {
+        const panel = document.getElementById('createTeamPanel');
+        if (panel.classList.contains('hidden')) {
+            panel.classList.remove('hidden');
+        } else {
+            panel.classList.add('hidden');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const projectDropdown = document.getElementById('id_project');
+        const nativeSelect = document.getElementById('id_members');
+
+        if (projectDropdown && nativeSelect) {
+
+            // 1. Hide the ugly native select and Django's "Hold Ctrl..." help text
+            nativeSelect.style.display = 'none';
+            const helpText = nativeSelect.parentNode.querySelector('.helptext');
+            if (helpText) helpText.style.display = 'none';
+
+            // 2. Build the Professional Custom UI Container
+            const customUI = document.createElement('div');
+            customUI.className = 'mt-2';
+
+            // Custom Search Bar with Icon
+            const searchWrapper = document.createElement('div');
+            searchWrapper.className = 'relative mb-3';
+            searchWrapper.innerHTML = `
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
+                </div>
+                <input type="text" id="custom_search" class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-300 focus:border-green-500 focus:ring-green-500 shadow-sm text-sm transition bg-slate-50 focus:bg-white" placeholder="Search by name, ID, or email...">
+            `;
+            customUI.appendChild(searchWrapper);
+
+            // Custom Scrollable List Area
+            const listContainer = document.createElement('div');
+            listContainer.className = 'max-h-60 overflow-y-auto bg-white border border-slate-300 rounded-lg shadow-inner divide-y divide-slate-100';
+            customUI.appendChild(listContainer);
+
+            // Insert Custom UI exactly where the native select used to be
+            nativeSelect.parentNode.insertBefore(customUI, nativeSelect.nextSibling);
+
+            const searchInput = searchWrapper.querySelector('input');
+
+            // 3. Search Filter Logic
+            searchInput.addEventListener('input', function() {
+                const filter = this.value.toLowerCase();
+                const items = listContainer.querySelectorAll('label');
+                items.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(filter) ? 'flex' : 'none';
+                });
+            });
+
+            // 4. AJAX Logic: Fetch and Build Checkboxes
             projectDropdown.addEventListener('change', function() {
                 const projectId = this.value;
 
-                // 1. Show loading state
-                membersDropdown.innerHTML = '<option value="" disabled>Loading students...</option>';
+                searchInput.value = ''; // Reset search
+                listContainer.innerHTML = '<div class="p-4 text-sm text-slate-500 text-center"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading students...</div>';
+                nativeSelect.innerHTML = ''; // Clear hidden native select
 
-                // 2. Clear if they unselect the project
                 if (!projectId) {
-                    membersDropdown.innerHTML = '';
+                    listContainer.innerHTML = '<div class="p-4 text-sm text-slate-400 italic text-center">Select a project first.</div>';
                     return;
                 }
 
-                // 3. Fetch the students securely from our new Django URL
                 fetch(`/academic/ajax/load-project-students/?project_id=${projectId}`)
                     .then(response => response.json())
                     .then(data => {
-                        membersDropdown.innerHTML = ''; // Clear dropdown
+                        listContainer.innerHTML = '';
 
                         if (data.students.length === 0) {
-                            membersDropdown.innerHTML = '<option value="" disabled>No students enrolled in this section.</option>';
+                            listContainer.innerHTML = '<div class="p-4 text-sm text-slate-400 italic text-center">No students enrolled in this section.</div>';
                         } else {
-                            // Populate the list with the fetched students
                             data.students.forEach(student => {
+                                // A. Add to hidden native select
                                 const option = document.createElement('option');
                                 option.value = student.id;
-                                option.textContent = student.name;
-                                membersDropdown.appendChild(option);
+                                nativeSelect.appendChild(option);
+
+                                // B. Build beautiful checkbox row for Custom UI
+                                const item = document.createElement('label');
+                                item.className = 'flex items-center p-3 hover:bg-green-50 cursor-pointer transition group';
+                                item.innerHTML = `
+                                    <div class="flex-shrink-0 mr-3">
+                                        <input type="checkbox" value="${student.id}" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer transition">
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-bold text-slate-700 group-hover:text-green-800 transition">${student.name}</span>
+                                        <span class="text-xs text-slate-500 group-hover:text-green-600 transition">${student.email}</span>
+                                    </div>
+                                `;
+
+                                // C. Sync Custom Checkbox with Hidden Native Select
+                                const checkbox = item.querySelector('input');
+                                checkbox.addEventListener('change', function() {
+                                    option.selected = this.checked;
+                                });
+
+                                listContainer.appendChild(item);
                             });
                         }
                     })
                     .catch(error => {
                         console.error('Error fetching students:', error);
-                        membersDropdown.innerHTML = '<option value="" disabled>Error loading students.</option>';
+                        listContainer.innerHTML = '<div class="p-4 text-sm text-red-500 text-center">Error loading students.</div>';
                     });
             });
 
-            // Trigger the change event on load if a project is already selected
-            // (Useful if the form reloads with validation errors)
+            // Trigger fetch on load if project is already selected
             if (projectDropdown.value) {
                 projectDropdown.dispatchEvent(new Event('change'));
             }
