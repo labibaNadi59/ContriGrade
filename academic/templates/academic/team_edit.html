@@ -3,37 +3,175 @@
 {% block title %}Edit Team - ContriGrade{% endblock %}
 
 {% block sidebar_links %}
-<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+<!-- Projects Tab -->
+<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 font-medium">
     <i class="fa-solid fa-book-open w-5"></i>
     <span>Projects</span>
 </a>
-<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
+
+<!-- Teams Tab -->
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition bg-blue-50 text-blue-600 font-semibold shadow-sm">
     <i class="fa-solid fa-users w-5"></i>
     <span>Teams</span>
+</a>
+
+<!-- Reports Tab -->
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition text-gray-600 hover:bg-gray-50 font-medium">
+    <i class="fa-solid fa-chart-line w-5"></i>
+    <span>Reports</span>
 </a>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto">
-    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-lg font-bold mb-4 border-b pb-2">Editing Team: {{ team.team_name }}</h2>
-        
+<div class="max-w-3xl mx-auto mt-4">
+
+    <!-- Header Navigation -->
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{% url 'team_management' %}" class="text-gray-400 hover:text-green-600 transition">
+            <i class="fa-solid fa-arrow-left"></i> Back to Teams
+        </a>
+        <h2 class="text-2xl font-extrabold text-slate-800 ml-2">Edit Settings: <span class="text-green-600">{{ team.team_name }}</span></h2>
+    </div>
+
+    <!-- Edit Form Card -->
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
+
+        <h3 class="text-lg font-bold text-slate-800 border-b border-slate-100 pb-4 mb-6">
+            <i class="fa-solid fa-sliders text-green-500 mr-2"></i> Team Configuration
+        </h3>
+
         {% if error_message %}
-            <div class="bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 mb-4 text-xs">{{ error_message }}</div>
+            <div class="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 mb-6 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-circle-exclamation"></i> {{ error_message }}
+            </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" action="">
             {% csrf_token %}
-            {{ form.as_p }}
-            <div class="flex space-x-4 mt-6">
-                <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2 text-sm rounded-lg hover:bg-blue-700 transition">
-                    Save Changes
+            <div class="space-y-4 max-w-2xl">
+                {{ form.as_p }}
+            </div>
+
+            <div class="flex space-x-3 mt-8 pt-6 border-t border-slate-100">
+                <button type="submit" class="bg-green-600 text-white font-bold py-2.5 px-8 rounded-xl hover:bg-green-700 transition shadow-sm flex items-center gap-2">
+                    Save Changes <i class="fa-solid fa-check"></i>
                 </button>
-                <a href="{% url 'team_management' %}" class="flex-1 text-center bg-gray-100 text-gray-700 font-bold py-2 text-sm rounded-lg hover:bg-gray-200 transition">
+                <a href="{% url 'team_management' %}" class="bg-white border border-slate-300 text-slate-700 font-bold py-2.5 px-6 rounded-xl hover:bg-slate-50 transition shadow-sm">
                     Cancel
                 </a>
             </div>
         </form>
+
+        <!-- Danger Zone -->
+        <div class="mt-12 pt-8 border-t border-red-200">
+            <h3 class="text-lg font-bold text-red-600 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i> Danger Zone
+            </h3>
+
+            <div class="bg-red-50 border border-red-200 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h4 class="font-bold text-red-900 text-sm">Delete this team</h4>
+                    <p class="text-xs text-red-700 mt-1 max-w-sm">
+                        This action is permanent. Deleting this team will erase all associated peer evaluations, deliverable records, and code analytics.
+                    </p>
+                </div>
+
+                <form method="post" action="" class="shrink-0" onsubmit="return confirm('WARNING: Are you absolutely sure you want to permanently delete this team? All student evaluations and submissions tied to this team will be lost forever.');">
+                    {% csrf_token %}
+                    <input type="hidden" name="delete_team" value="1">
+                    <button type="submit" class="bg-white border border-red-300 text-red-600 font-bold py-2.5 px-5 rounded-lg hover:bg-red-600 hover:text-white transition shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> Delete Team
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const nativeSelect = document.getElementById('id_members');
+
+        if (nativeSelect) {
+
+            // 1. Hide the ugly native select and Django's help text
+            nativeSelect.style.display = 'none';
+            const helpText = nativeSelect.parentNode.querySelector('.helptext');
+            if (helpText) helpText.style.display = 'none';
+
+            // 2. Build the Professional Custom UI Container
+            const customUI = document.createElement('div');
+            customUI.className = 'mt-2';
+
+            // Custom Search Bar
+            const searchWrapper = document.createElement('div');
+            searchWrapper.className = 'relative mb-3';
+            searchWrapper.innerHTML = `
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
+                </div>
+                <input type="text" id="custom_search" class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-300 focus:border-green-500 focus:ring-green-500 shadow-sm text-sm transition bg-slate-50 focus:bg-white" placeholder="Search by name, ID, or email...">
+            `;
+            customUI.appendChild(searchWrapper);
+
+            // Custom Scrollable List Area
+            const listContainer = document.createElement('div');
+            listContainer.className = 'max-h-60 overflow-y-auto bg-white border border-slate-300 rounded-lg shadow-inner divide-y divide-slate-100';
+            customUI.appendChild(listContainer);
+
+            // Insert Custom UI exactly where the native select used to be
+            nativeSelect.parentNode.insertBefore(customUI, nativeSelect.nextSibling);
+
+            const searchInput = searchWrapper.querySelector('input');
+
+            // 3. Search Filter Logic
+            searchInput.addEventListener('input', function() {
+                const filter = this.value.toLowerCase();
+                const items = listContainer.querySelectorAll('label');
+                items.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(filter) ? 'flex' : 'none';
+                });
+            });
+
+            // 4. Generate custom UI dynamically from Django's pre-rendered options
+            Array.from(nativeSelect.options).forEach(option => {
+                const item = document.createElement('label');
+                item.className = 'flex items-center p-3 hover:bg-green-50 cursor-pointer transition group';
+
+                // Try to format nicely if the backend string includes email in parentheses
+                let displayName = option.text;
+                let displayEmail = '';
+                const match = displayName.match(/(.+?)\s*\((.+?@.+?)\)/);
+                if (match) {
+                    displayName = match[1];
+                    displayEmail = match[2];
+                }
+
+                item.innerHTML = `
+                    <div class="flex-shrink-0 mr-3">
+                        <input type="checkbox" value="${option.value}" ${option.selected ? 'checked' : ''} class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer transition">
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-700 group-hover:text-green-800 transition">${displayName}</span>
+                        ${displayEmail ? `<span class="text-xs text-slate-500 group-hover:text-green-600 transition">${displayEmail}</span>` : ''}
+                    </div>
+                `;
+
+                // Sync custom checkbox interaction with hidden native option
+                const checkbox = item.querySelector('input');
+                checkbox.addEventListener('change', function() {
+                    option.selected = this.checked;
+                });
+
+                listContainer.appendChild(item);
+            });
+
+            if (nativeSelect.options.length === 0) {
+                listContainer.innerHTML = '<div class="p-4 text-sm text-slate-400 italic text-center">No students available.</div>';
+            }
+        }
+    });
+</script>
 {% endblock %}

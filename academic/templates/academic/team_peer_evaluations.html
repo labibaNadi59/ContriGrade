@@ -1,0 +1,147 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Peer Scores: {{ team.team_name }} - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Projects</span>
+</a>
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-users w-5"></i>
+    <span>Teams</span>
+</a>
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-chart-line w-5"></i>
+    <span>Reports</span>
+</a>
+
+<div class="pt-4 mt-4 border-t border-gray-200">
+    <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Team Views</p>
+
+    <!-- Code Analytics Button -->
+    <a href="{% url 'team_analytics_dashboard' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_analytics_dashboard' %}bg-blue-50 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+        <i class="fa-brands fa-github w-5"></i>
+        <span>Code Analytics</span>
+    </a>
+
+    <!-- Peer Reviews Button -->
+    <a href="{% url 'team_deliverables_review' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_deliverables_review' %}bg-indigo-50 text-indigo-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+        <i class="fa-solid fa-file-signature w-5"></i>
+        <span>Peer Reviews</span>
+    </a>
+
+    <!--  Peer Scores Link -->
+    <a href="{% url 'team_peer_evaluations' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_peer_evaluations' %}bg-purple-50 text-purple-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+        <i class="fa-solid fa-star-half-stroke w-5"></i>
+        <span>Peer Scores</span>
+    </a>
+</div>
+
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <a href="javascript:history.back()" class="text-gray-500 hover:text-purple-600 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <h2 class="text-2xl font-bold text-gray-800">Aggregated Peer Scores</h2>
+            </div>
+            <p class="text-sm text-gray-500 ml-6">Project: <strong>{{ team.project.title }}</strong> | Team: <strong>{{ team.team_name }}</strong></p>
+        </div>
+    </div>
+
+    <!-- Security Banner -->
+    <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-8 flex items-start gap-3 shadow-sm">
+        <i class="fa-solid fa-shield-halved text-purple-500 mt-0.5"></i>
+        <div>
+            <h3 class="text-sm font-bold text-purple-900">Confidentiality Enforced</h3>
+            <p class="text-xs text-purple-700 mt-1">Evaluator identities have been scrubbed from this report. Scores are mathematically averaged, and written feedback is anonymized to protect student privacy while allowing for accurate instructor assessment.</p>
+        </div>
+    </div>
+
+    {% if not criteria %}
+        <div class="bg-white p-10 rounded-2xl border border-slate-200 shadow-sm text-center">
+            <h3 class="text-lg font-bold text-slate-700">No Assessment Criteria Configured</h3>
+            <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">You must add evaluation criteria to this project before students can submit peer scores.</p>
+            <a href="{% url 'edit_project' team.project.pk %}" class="mt-4 inline-block bg-purple-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-purple-700 transition">Configure Criteria</a>
+        </div>
+    {% else %}
+        
+        <!-- Student Assessment Cards -->
+        <div class="space-y-6">
+            {% for data in assessment_data %}
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    
+                    <!-- Student Header -->
+                    <div class="p-5 border-b border-slate-100 bg-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                                <i class="fa-solid fa-user-graduate text-purple-500"></i> {{ data.student.name }}
+                            </h3>
+                            <p class="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">
+                                Project Role: {{ data.student.role|default:"Student" }}
+                            </p>
+                        </div>
+                        
+                        <!-- Completion Badge -->
+                        <div class="shrink-0 flex items-center gap-3">
+                            <div class="text-right">
+                                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Evaluated By</p>
+                                <p class="text-lg font-black {% if data.is_complete %}text-green-600{% else %}text-amber-500{% endif %}">
+                                    {{ data.received_count }} <span class="text-sm font-bold text-slate-400">/ {{ data.expected_count }} peers</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Left: Aggregated Scores -->
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Average Scores</h4>
+                            <div class="space-y-5">
+                                {% for score in data.scores_breakdown %}
+                                    <div>
+                                        <div class="flex justify-between items-end mb-1.5">
+                                            <span class="text-sm font-bold text-slate-700">{{ score.criterion_name }}</span>
+                                            <span class="text-sm font-black text-purple-700">{{ score.avg_score }} <span class="text-xs font-bold text-slate-400">/ {{ score.max_score }}</span></span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 rounded-full h-2">
+                                            <div class="bg-purple-500 h-2 rounded-full" style="width: {{ score.percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Right: Anonymous Feedback -->
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-comment-dots text-slate-300"></i> Anonymous Feedback
+                            </h4>
+                            
+                            {% if data.feedback_list %}
+                                <ul class="space-y-3">
+                                    {% for feedback in data.feedback_list %}
+                                        <li class="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 italic leading-relaxed">
+                                            "{{ feedback }}"
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 text-center">
+                                    <p class="text-sm text-slate-400 italic">No written feedback was provided by peers.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
