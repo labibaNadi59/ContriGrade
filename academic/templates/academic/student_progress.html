@@ -104,7 +104,9 @@
 
                            <!-- Progress Bar -->
                             <div class="mt-3 w-full bg-gray-200 rounded-full h-2.5 max-w-md mb-3">
-                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ student.percentage }}%"></div>
+                                <div class="student-progress-bar bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                                     data-progress="{{ student.percentage|default:0 }}"
+                                     style="width: 0%;"></div>
                             </div>
 
                             <!-- NEW: Peer Evaluation Buttons -->
@@ -453,4 +455,6 @@
     });
 </script>
 {% endblock %}
+
+
 
