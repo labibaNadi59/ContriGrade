@@ -7,11 +7,10 @@ from .models import CourseSection
 from .utils import validate_github_repo_url
 
 
-
 class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
-        fields = ['title', 'description', 'section', 'deadline']
+        fields = ['title', 'description', 'section', 'deadline', 'weight_github', 'weight_deliverables', 'weight_peer']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm',
                                             'placeholder': 'e.g. E-Commerce Platform'}),
@@ -19,20 +18,41 @@ class ProjectForm(forms.ModelForm):
             'section': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm bg-white'}),
             'deadline': forms.DateTimeInput(
                 attrs={'type': 'datetime-local', 'class': 'w-full px-3 py-2 border rounded-lg text-sm'}),
+
+            # Weight Widgets
+            'weight_github': forms.NumberInput(
+                attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm weight-input', 'min': '0', 'max': '100'}),
+            'weight_deliverables': forms.NumberInput(
+                attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm weight-input', 'min': '0', 'max': '100'}),
+            'weight_peer': forms.NumberInput(
+                attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm weight-input', 'min': '0', 'max': '100'}),
         }
 
     def __init__(self, *args, **kwargs):
-        # Pop the user passed from the view
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
         if user:
             if user.role == 'INSTRUCTOR':
-                # Restrict sections strictly to those assigned to this instructor by the coordinator
                 self.fields['section'].queryset = CourseSection.objects.filter(instructor=user)
             elif user.is_coordinator:
-                # Coordinators can view all sections across the board
                 self.fields['section'].queryset = CourseSection.objects.all()
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # Calculate total weight
+        w_github = cleaned_data.get('weight_github', 0) or 0
+        w_deliv = cleaned_data.get('weight_deliverables', 0) or 0
+        w_peer = cleaned_data.get('weight_peer', 0) or 0
+
+        total = w_github + w_deliv + w_peer
+
+        # Throw form error if not 100%
+        if total != 100:
+            raise forms.ValidationError(f"Assessment weights must sum to exactly 100%. Your current total is {total}%.")
+
+        return cleaned_data
 
 
 User = get_user_model()

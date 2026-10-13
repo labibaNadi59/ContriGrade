@@ -785,21 +785,48 @@ def edit_project(request, project_id):
 
         # ACTION 2: Add New Criterion
         elif 'add_criterion' in request.POST:
-            name = request.POST.get('criterion_name')
-            description = request.POST.get('criterion_description', '')
+            name = (request.POST.get('criterion_name') or '').strip()
+            description = (request.POST.get('criterion_description') or '').strip()
             max_score = request.POST.get('criterion_max_score', 5)
 
             if name:
+                try:
+                    max_score_int = int(max_score)
+                except (ValueError, TypeError):
+                    max_score_int = 5
                 EvaluationCriterion.objects.create(
                     project=project,
-                    name=name.strip(),
-                    description=description.strip(),
-                    max_score=int(max_score)
+                    name=name,
+                    description=description,
+                    max_score=max_score_int
                 )
                 messages.success(request, f"Added peer evaluation criterion: '{name}'.")
+            else:
+                messages.error(request, "Criterion name cannot be empty.")
             return redirect('edit_project', project_id=project.project_id)
 
-        # ACTION 3: Delete Criterion
+        # ACTION 3: Update Existing Criterion
+        elif 'update_criterion' in request.POST:
+            crit_id = request.POST.get('criterion_id') or request.POST.get('update_criterion')
+            criterion = get_object_or_404(EvaluationCriterion, pk=crit_id, project=project)
+            name = (request.POST.get('criterion_name') or '').strip()
+            description = (request.POST.get('criterion_description') or '').strip()
+            max_score = request.POST.get('criterion_max_score', 5)
+
+            if name:
+                criterion.name = name
+                criterion.description = description
+                try:
+                    criterion.max_score = int(max_score)
+                except (ValueError, TypeError):
+                    pass
+                criterion.save()
+                messages.success(request, f"Updated criterion: '{criterion.name}'.")
+            else:
+                messages.error(request, "Criterion name cannot be empty.")
+            return redirect('edit_project', project_id=project.project_id)
+
+        # ACTION 4: Delete Criterion
         elif 'delete_criterion' in request.POST:
             crit_id = request.POST.get('delete_criterion')
             criterion = get_object_or_404(EvaluationCriterion, pk=crit_id, project=project)
