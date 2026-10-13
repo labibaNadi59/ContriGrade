@@ -1,0 +1,133 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Policy Requests - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<!-- Overview Hub -->
+<a href="{% url 'coordinator_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_dashboard' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-chart-pie w-5"></i>
+    <span>Overview</span>
+</a>
+
+<!-- Courses -->
+<a href="{% url 'coordinator_courses' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_courses' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Curriculum Policies</span>
+</a>
+
+<!-- Sections -->
+<a href="{% url 'coordinator_sections' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_sections' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-chalkboard-user w-5"></i>
+    <span>Faculty Allocation</span>
+</a>
+
+<!-- Policy Requests Inbox -->
+<a href="{% url 'coordinator_requests' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_requests' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-inbox w-5"></i>
+    <span>Policy Requests</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto mt-2">
+    
+    <!-- Top Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-200 pb-6">
+        <div>
+            <h2 class="text-2xl font-extrabold text-slate-900 flex items-center gap-3">
+                Policy Requests Inbox 
+                {% if pending_requests %}
+                    <span class="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">{{ pending_requests|length }}</span>
+                {% endif %}
+            </h2>
+            <p class="text-slate-500 text-sm mt-1">Review and approve instructor requests to deviate from standard grading weights.</p>
+        </div>
+    </div>
+
+    <!-- Requests Inbox -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-6 md:p-8 space-y-6">
+            {% for req in pending_requests %}
+                <div class="p-6 border border-amber-200 rounded-xl bg-amber-50/30 shadow-sm relative transition hover:border-amber-300 group">
+                    
+                    <!-- Notification Dot -->
+                    <div class="absolute top-4 right-4 flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <!-- Left: Info & Justification -->
+                        <div class="flex-1">
+                            <h4 class="font-extrabold text-slate-900 text-lg mb-1 pr-6">{{ req.project.title }}</h4>
+                            <p class="text-sm font-semibold text-indigo-600 mb-4">
+                                <i class="fa-solid fa-user-tie text-indigo-400 mr-1"></i> {{ req.instructor.name }} 
+                                <span class="text-slate-400 mx-2">|</span> 
+                                {{ req.project.section.course.course_code }} (Sec: {{ req.project.section.section_name }})
+                            </p>
+                            
+                            <div class="mb-4">
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Instructor Justification:</span>
+                                <div class="bg-white border-l-4 border-amber-400 p-4 rounded-r-lg shadow-sm">
+                                    <p class="text-sm text-slate-700 italic">"{{ req.justification }}"</p>
+                                    <p class="text-xs text-slate-400 mt-2 font-semibold">Submitted: {{ req.created_at|date:"M d, Y" }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Weights Comparison & Actions -->
+                        <div class="w-full md:w-72 shrink-0 flex flex-col justify-between">
+                            
+                            <!-- Proposed Weights Box -->
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 mb-4">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center border-b border-slate-100 pb-2">Proposed Custom Split</span>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between text-xs font-bold text-slate-600">
+                                        <span><i class="fa-brands fa-github text-slate-400 w-4"></i> GitHub:</span>
+                                        <span class="text-slate-900">{{ req.proposed_github }}%</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs font-bold text-slate-600">
+                                        <span><i class="fa-solid fa-file-lines text-slate-400 w-4"></i> Deliverables:</span>
+                                        <span class="text-slate-900">{{ req.proposed_deliverables }}%</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs font-bold text-slate-600">
+                                        <span><i class="fa-solid fa-users text-slate-400 w-4"></i> Peer Eval:</span>
+                                        <span class="text-slate-900">{{ req.proposed_peer }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex gap-2 mt-auto">
+                                <form action="{% url 'review_policy_request' req.request_id %}" method="post" class="flex-1">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="APPROVE">
+                                    <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-lg text-sm transition shadow-sm" onclick="return confirm('Approve this custom policy?');">
+                                        <i class="fa-solid fa-check mr-1"></i> Approve
+                                    </button>
+                                </form>
+                                <form action="{% url 'review_policy_request' req.request_id %}" method="post" class="flex-1">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="REJECT">
+                                    <button type="submit" class="w-full bg-white border border-slate-300 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 font-bold py-2.5 rounded-lg text-sm transition shadow-sm" onclick="return confirm('Reject this request?');">
+                                        <i class="fa-solid fa-xmark mr-1"></i> Reject
+                                    </button>
+                                </form>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="text-center py-16">
+                    <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-100">
+                        <i class="fa-solid fa-check-double text-3xl text-green-500"></i>
+                    </div>
+                    <h4 class="text-xl font-extrabold text-slate-800 mb-2">Inbox Zero!</h4>
+                    <p class="text-sm text-slate-500 max-w-md mx-auto">You're all caught up. There are currently no pending policy override requests from your instructors.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
