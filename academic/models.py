@@ -45,18 +45,31 @@ class CourseSection(models.Model):
     def __str__(self):
         return f"{self.course.course_code} - {self.section_name}"
 
+
 class Project(models.Model):
     project_id = models.AutoField(primary_key=True)
     section = models.ForeignKey(CourseSection, on_delete=models.CASCADE, related_name='projects')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
     deadline = models.DateTimeField()
+
+    # Assessment Weight Fields (Defaulting to a balanced 100%)
+    weight_github = models.PositiveIntegerField(default=40, help_text="Weight for GitHub Analytics (%)")
+    weight_deliverables = models.PositiveIntegerField(default=30, help_text="Weight for Deliverables (%)")
+    weight_peer = models.PositiveIntegerField(default=30, help_text="Weight for Peer Evaluation (%)")
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
-        # Prevent creating projects with deadlines in the past (Task T3.3)
+        # Prevent creating projects with deadlines in the past
         if self.deadline and self.deadline <= timezone.now():
             raise ValidationError({'deadline': "Project deadline cannot be set in the past."})
+
+        # Ensure weights always equal 100%
+        total_weight = (self.weight_github or 0) + (self.weight_deliverables or 0) + (self.weight_peer or 0)
+        if total_weight != 100:
+            raise ValidationError(
+                f"Total assessment weights must equal exactly 100%. Current total is {total_weight}%.")
 
     def is_active(self):
         return timezone.now() <= self.deadline
