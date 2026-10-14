@@ -19,6 +19,48 @@ class Course(models.Model):
         return f"{self.course_code} - {self.course_name}"
 
 
+class CourseAssessmentPolicy(models.Model):
+    course = models.OneToOneField(Course, on_delete=models.CASCADE, related_name='assessment_policy')
+    weight_github = models.PositiveIntegerField(default=40, help_text="Standard weight for GitHub Analytics (%)")
+    weight_deliverables = models.PositiveIntegerField(default=30, help_text="Standard weight for Deliverables (%)")
+    weight_peer = models.PositiveIntegerField(default=30, help_text="Standard weight for Peer Evaluation (%)")
+    last_updated = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        total = (self.weight_github or 0) + (self.weight_deliverables or 0) + (self.weight_peer or 0)
+        if total != 100:
+            raise ValidationError(f"Course policy weights must sum to exactly 100%. Current total is {total}%.")
+
+    def __str__(self):
+        return f"Policy for {self.course.course_code}"
+
+
+class PolicyChangeRequest(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending Review'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    )
+    request_id = models.AutoField(primary_key=True)
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='policy_requests')
+    instructor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    proposed_github = models.PositiveIntegerField()
+    proposed_deliverables = models.PositiveIntegerField()
+    proposed_peer = models.PositiveIntegerField()
+
+    justification = models.TextField()
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    def clean(self):
+        total = (self.proposed_github or 0) + (self.proposed_deliverables or 0) + (self.proposed_peer or 0)
+        if total != 100:
+            raise ValidationError("Proposed weights must sum exactly to 100%.")
+
+
 class CourseSection(models.Model):
     section_id = models.AutoField(primary_key=True)
     course = models.ForeignKey('Course', on_delete=models.CASCADE, related_name='sections')
@@ -65,12 +107,13 @@ class Project(models.Model):
         if self.deadline and self.deadline <= timezone.now():
             raise ValidationError({'deadline': "Project deadline cannot be set in the past."})
 
-        # Ensure weights always equal 100%
-        total_weight = (self.weight_github or 0) + (self.weight_deliverables or 0) + (self.weight_peer or 0)
-        if total_weight != 100:
-            raise ValidationError(
-                f"Total assessment weights must equal exactly 100%. Current total is {total_weight}%.")
-
+        #Only enforce the 100% rule if the project already exists (editing).
+        # When creating a new project, the dashboard view securely forces the weights.
+        if self.pk:
+            total_weight = (self.weight_github or 0) + (self.weight_deliverables or 0) + (self.weight_peer or 0)
+            if total_weight != 100:
+                raise ValidationError(
+                    f"Assessment weights must sum to exactly 100%. Your current total is {total_weight}%.")
     def is_active(self):
         return timezone.now() <= self.deadline
 
@@ -217,45 +260,7 @@ class PeerEvaluationScore(models.Model):
         return f"{self.criterion.name}: {self.score}"
 
 
-class CourseAssessmentPolicy(models.Model):
-    course = models.OneToOneField(Course, on_delete=models.CASCADE, related_name='assessment_policy')
-    weight_github = models.PositiveIntegerField(default=40, help_text="Standard weight for GitHub Analytics (%)")
-    weight_deliverables = models.PositiveIntegerField(default=30, help_text="Standard weight for Deliverables (%)")
-    weight_peer = models.PositiveIntegerField(default=30, help_text="Standard weight for Peer Evaluation (%)")
-    last_updated = models.DateTimeField(auto_now=True)
-
-    def clean(self):
-        total = (self.weight_github or 0) + (self.weight_deliverables or 0) + (self.weight_peer or 0)
-        if total != 100:
-            raise ValidationError(f"Course policy weights must sum to exactly 100%. Current total is {total}%.")
-
-    def __str__(self):
-        return f"Policy for {self.course.course_code}"
 
 
-class PolicyChangeRequest(models.Model):
-    STATUS_CHOICES = (
-        ('PENDING', 'Pending Review'),
-        ('APPROVED', 'Approved'),
-        ('REJECTED', 'Rejected'),
-    )
-    request_id = models.AutoField(primary_key=True)
-    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='policy_requests')
-    instructor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-
-    proposed_github = models.PositiveIntegerField()
-    proposed_deliverables = models.PositiveIntegerField()
-    proposed_peer = models.PositiveIntegerField()
-
-    justification = models.TextField()
-    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    reviewed_at = models.DateTimeField(null=True, blank=True)
-
-    def clean(self):
-        total = (self.proposed_github or 0) + (self.proposed_deliverables or 0) + (self.proposed_peer or 0)
-        if total != 100:
-            raise ValidationError("Proposed weights must sum exactly to 100%.")
 
 

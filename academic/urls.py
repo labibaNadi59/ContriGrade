@@ -41,4 +41,11 @@ path('coordinator/request/<int:request_id>/review/', views.review_policy_request
 # Instructor Policy Requests
 path('instructor/project/<int:project_id>/policy-request/', views.submit_policy_request, name='submit_policy_request'),
 
+# Coordinator Hub & Navigation
+    path('coordinator/dashboard/', views.coordinator_dashboard, name='coordinator_dashboard'),
+    path('coordinator/courses/', views.coordinator_courses, name='coordinator_courses'),
+    path('coordinator/sections/', views.coordinator_sections, name='coordinator_sections'),
+    path('coordinator/requests/', views.coordinator_requests, name='coordinator_requests'),
+
+path('coordinator/courses/<int:course_id>/policy/', views.update_course_policy, name='update_course_policy'),
 ]
