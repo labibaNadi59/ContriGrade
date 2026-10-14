@@ -35,5 +35,10 @@ path('student/claim/<int:claim_id>/verify/', views.verify_claim, name='verify_cl
     path('student/claim/<int:claim_id>/reject/', views.reject_claim, name='reject_claim'),
 
 path('student/team/<int:team_id>/evaluate/<int:teammate_id>/', views.evaluate_teammate, name='evaluate_teammate'),
+# Coordinator Policy Management
+path('coordinator/request/<int:request_id>/review/', views.review_policy_request, name='review_policy_request'),
+
+# Instructor Policy Requests
+path('instructor/project/<int:project_id>/policy-request/', views.submit_policy_request, name='submit_policy_request'),
 
 ]

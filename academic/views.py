@@ -2,8 +2,11 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+
 from accounts.decorators import student_required
-from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution,EvaluationCriterion, PeerEvaluation, PeerEvaluationScore
+from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution, \
+    EvaluationCriterion, PeerEvaluation, PeerEvaluationScore, PolicyChangeRequest, CourseAssessmentPolicy
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
     StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm
 from django.shortcuts import get_object_or_404
@@ -647,19 +650,58 @@ def coordinator_dashboard(request):
     if not request.user.is_coordinator:
         return redirect('dashboard_redirect')
 
-    courses = Course.objects.all().select_related('coordinator')
+    courses = Course.objects.all().select_related('coordinator', 'assessment_policy')
     sections = CourseSection.objects.all().select_related('course', 'instructor')
     instructors = User.objects.filter(role='INSTRUCTOR')
-    section_form = CourseSectionForm()
+
+    # Fetch pending policy change requests
+    pending_requests = PolicyChangeRequest.objects.filter(
+        project__section__course__coordinator=request.user,
+        status='PENDING'
+    ).select_related('project', 'instructor', 'project__section__course')
+
+    # Ensure every course has a default policy
+    for course in courses:
+        CourseAssessmentPolicy.objects.get_or_create(course=course)
 
     context = {
         'user': request.user,
         'courses': courses,
         'sections': sections,
         'instructors': instructors,
-        'section_form': section_form,
+        'pending_requests': pending_requests,
     }
     return render(request, 'academic/coordinator_dashboard.html', context)
+
+
+@login_required
+def review_policy_request(request, request_id):
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
+    policy_request = get_object_or_404(PolicyChangeRequest, pk=request_id)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'APPROVE':
+            policy_request.status = 'APPROVED'
+            # Apply the requested weights to the project
+            project = policy_request.project
+            project.weight_github = policy_request.proposed_github
+            project.weight_deliverables = policy_request.proposed_deliverables
+            project.weight_peer = policy_request.proposed_peer
+            project.save()
+            messages.success(request, f"Approved custom grading policy for {project.title}.")
+
+        elif action == 'REJECT':
+            policy_request.status = 'REJECTED'
+            messages.warning(request, f"Rejected custom policy request for {policy_request.project.title}.")
+
+        policy_request.reviewed_at = timezone.now()
+        policy_request.save()
+
+    return redirect('coordinator_dashboard')
+
 
 @login_required
 def section_create(request):
@@ -938,3 +980,36 @@ def team_deliverables_review(request, team_id):
         'deliverables': deliverables,
         'current_filter': current_filter,
     })
+
+
+@login_required
+def submit_policy_request(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+
+    if request.user.role != 'INSTRUCTOR' or project.section.instructor != request.user:
+        messages.error(request, "Unauthorized.")
+        return redirect('dashboard_redirect')
+
+    if request.method == 'POST':
+        justification = request.POST.get('justification')
+        p_github = int(request.POST.get('proposed_github', 0))
+        p_deliverables = int(request.POST.get('proposed_deliverables', 0))
+        p_peer = int(request.POST.get('proposed_peer', 0))
+
+        if (p_github + p_deliverables + p_peer) != 100:
+            messages.error(request, "Proposed weights must equal 100%.")
+            return redirect('edit_project', project_id=project.pk)
+
+        # Create or update pending request
+        PolicyChangeRequest.objects.filter(project=project, status='PENDING').delete()
+        PolicyChangeRequest.objects.create(
+            project=project,
+            instructor=request.user,
+            proposed_github=p_github,
+            proposed_deliverables=p_deliverables,
+            proposed_peer=p_peer,
+            justification=justification
+        )
+        messages.success(request, "Custom policy request submitted to coordinator for review.")
+
+    return redirect('edit_project', project_id=project.pk)
