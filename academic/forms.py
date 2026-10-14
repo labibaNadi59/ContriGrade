@@ -7,6 +7,29 @@ from .models import CourseSection
 from .utils import validate_github_repo_url
 
 
+class ProjectCreateForm(forms.ModelForm):
+    """Form strictly used for creating a new project. Weights are excluded so they don't trigger validation errors."""
+    class Meta:
+        model = Project
+        fields = ['title', 'description', 'section', 'deadline']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm', 'placeholder': 'e.g. E-Commerce Platform'}),
+            'description': forms.Textarea(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm', 'rows': 3}),
+            'section': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg text-sm bg-white'}),
+            'deadline': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full px-3 py-2 border rounded-lg text-sm'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            if user.role == 'INSTRUCTOR':
+                self.fields['section'].queryset = CourseSection.objects.filter(instructor=user)
+            elif user.is_coordinator:
+                self.fields['section'].queryset = CourseSection.objects.all()
+
+
 class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project

@@ -8,7 +8,7 @@ from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution, \
     EvaluationCriterion, PeerEvaluation, PeerEvaluationScore, PolicyChangeRequest, CourseAssessmentPolicy
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
-    StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm
+    StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm, ProjectCreateForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
 from .utils import fetch_team_commits, analyze_team_contributions
@@ -415,6 +415,13 @@ def update_team_repo(request, team_id):
         'team': team
     })
 
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+
+
+# Make sure CourseAssessmentPolicy is imported at the top of views.py!
+
 @login_required
 def dashboard_redirect(request):
     if request.user.is_admin:
@@ -426,22 +433,29 @@ def dashboard_redirect(request):
 
     # Strictly for Instructors:
     if request.method == 'POST':
-        # Pass request.user into the form initialization
-        form = ProjectForm(request.POST, user=request.user)
+        # USE THE NEW FORM HERE
+        form = ProjectCreateForm(request.POST, user=request.user)
+
         if form.is_valid():
             project = form.save(commit=False)
 
-            # Security Check: Double-check that this instructor is assigned to the section
             if project.section.instructor == request.user:
+                # FORCE THE COURSE POLICY WEIGHTS
+                course = project.section.course
+                policy, created = CourseAssessmentPolicy.objects.get_or_create(course=course)
+
+                project.weight_github = policy.weight_github
+                project.weight_deliverables = policy.weight_deliverables
+                project.weight_peer = policy.weight_peer
+
                 project.save()
                 return redirect('dashboard_redirect')
             else:
                 form.add_error('section', 'You are not authorized to create a project for a section you do not teach.')
     else:
-        # Pass request.user here too so the GET form filters properly
-        form = ProjectForm(user=request.user)
 
-    # Instructors should only see projects belonging to their assigned sections
+        form = ProjectCreateForm(user=request.user)
+
     projects = Project.objects.filter(section__instructor=request.user).order_by('-deadline')
 
     context = {
@@ -450,6 +464,7 @@ def dashboard_redirect(request):
         'user': request.user
     }
     return render(request, 'academic/instructor_dashboard.html', context)
+
 
 
 @login_required
@@ -650,49 +665,67 @@ def coordinator_dashboard(request):
     if not request.user.is_coordinator:
         return redirect('dashboard_redirect')
 
-    courses = Course.objects.all().select_related('coordinator', 'assessment_policy')
-    sections = CourseSection.objects.all().select_related('course', 'instructor')
-    instructors = User.objects.filter(role='INSTRUCTOR')
-
-    # Fetch pending policy change requests
-    pending_requests = PolicyChangeRequest.objects.filter(
-        project__section__course__coordinator=request.user,
-        status='PENDING'
-    ).select_related('project', 'instructor', 'project__section__course')
-
-    # Ensure every course has a default policy
-    for course in courses:
-        CourseAssessmentPolicy.objects.get_or_create(course=course)
-
+    # Only load lightweight counts for the Hub statistics
     context = {
-        'user': request.user,
-        'courses': courses,
-        'sections': sections,
-        'instructors': instructors,
-        'pending_requests': pending_requests,
+        'total_courses': Course.objects.count(),
+        'total_sections': CourseSection.objects.count(),
+        'total_instructors': User.objects.filter(role='INSTRUCTOR').count(),
+        'pending_requests': PolicyChangeRequest.objects.filter(
+            project__section__course__coordinator=request.user,
+            status='PENDING'
+        ).count()
     }
     return render(request, 'academic/coordinator_dashboard.html', context)
 
 
 @login_required
-def review_policy_request(request, request_id):
-    if not request.user.is_coordinator:
-        return redirect('dashboard_redirect')
+def coordinator_courses(request):
+    if not request.user.is_coordinator: return redirect('dashboard_redirect')
+    courses = Course.objects.all().select_related('coordinator', 'assessment_policy')
+    # Ensure every course has a default policy
+    for course in courses:
+        CourseAssessmentPolicy.objects.get_or_create(course=course)
 
+    return render(request, 'academic/coordinator_courses.html', {'courses': courses})
+
+
+@login_required
+def coordinator_sections(request):
+    if not request.user.is_coordinator: return redirect('dashboard_redirect')
+    sections = CourseSection.objects.all().select_related('course', 'instructor')
+    instructors = User.objects.filter(role='INSTRUCTOR')
+    return render(request, 'academic/coordinator_sections.html', {
+        'sections': sections,
+        'instructors': instructors
+    })
+
+
+@login_required
+def coordinator_requests(request):
+    if not request.user.is_coordinator: return redirect('dashboard_redirect')
+    pending_requests = PolicyChangeRequest.objects.filter(
+        project__section__course__coordinator=request.user,
+        status='PENDING'
+    ).select_related('project', 'instructor', 'project__section__course')
+
+    return render(request, 'academic/coordinator_requests.html', {'pending_requests': pending_requests})
+
+
+@login_required
+def review_policy_request(request, request_id):
+    if not request.user.is_coordinator: return redirect('dashboard_redirect')
     policy_request = get_object_or_404(PolicyChangeRequest, pk=request_id)
 
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'APPROVE':
             policy_request.status = 'APPROVED'
-            # Apply the requested weights to the project
             project = policy_request.project
             project.weight_github = policy_request.proposed_github
             project.weight_deliverables = policy_request.proposed_deliverables
             project.weight_peer = policy_request.proposed_peer
             project.save()
             messages.success(request, f"Approved custom grading policy for {project.title}.")
-
         elif action == 'REJECT':
             policy_request.status = 'REJECTED'
             messages.warning(request, f"Rejected custom policy request for {policy_request.project.title}.")
@@ -700,24 +733,23 @@ def review_policy_request(request, request_id):
         policy_request.reviewed_at = timezone.now()
         policy_request.save()
 
-    return redirect('coordinator_dashboard')
+    # Redirect back to the dedicated requests inbox
+    return redirect('coordinator_requests')
+
 
 
 @login_required
 def section_create(request):
-    if not request.user.is_coordinator:
-        return redirect('dashboard_redirect')
-
+    if not request.user.is_coordinator: return redirect('dashboard_redirect')
     if request.method == 'POST':
         form = CourseSectionForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('coordinator_dashboard')
+            # Redirect to the new Sections page
+            return redirect('coordinator_sections')
     else:
         form = CourseSectionForm()
-
     return render(request, 'academic/section_form.html', {'form': form})
-
 
 @login_required
 def section_update_instructor(request, section_id):
@@ -739,7 +771,7 @@ def section_update_instructor(request, section_id):
 
         section.save()
 
-    return redirect('coordinator_dashboard')
+    return redirect('coordinator_sections')
 
 
 @login_required
@@ -751,26 +783,24 @@ def section_delete(request, section_id):
     if request.method == 'POST':
         section.delete()
 
-    return redirect('coordinator_dashboard')
+    return redirect('coordinator_sections')
 
 
 @login_required
 def course_create(request):
-    if not request.user.is_coordinator:
-        return redirect('dashboard_redirect')
-
+    if not request.user.is_coordinator: return redirect('dashboard_redirect')
     if request.method == 'POST':
         form = CourseForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('coordinator_dashboard')
+            # Redirect to the new Courses page
+            return redirect('coordinator_courses')
     else:
         form = CourseForm()
-        # Optionally pre-fill the coordinator field with the current user if they are a coordinator
         if request.user.is_coordinator:
             form.initial['coordinator'] = request.user
-
     return render(request, 'academic/course_form.html', {'form': form})
+
 
 
 @login_required
@@ -1013,3 +1043,49 @@ def submit_policy_request(request, project_id):
         messages.success(request, "Custom policy request submitted to coordinator for review.")
 
     return redirect('edit_project', project_id=project.pk)
+
+
+@login_required
+def update_course_policy(request, course_id):
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
+    course = get_object_or_404(Course, pk=course_id)
+
+    if course.coordinator != request.user:
+        messages.error(request, "You are not authorized to edit policies for this course.")
+        return redirect('coordinator_courses')
+
+    policy, created = CourseAssessmentPolicy.objects.get_or_create(course=course)
+
+    if request.method == 'POST':
+        try:
+            w_github = int(request.POST.get('weight_github', 0))
+            w_deliv = int(request.POST.get('weight_deliverables', 0))
+            w_peer = int(request.POST.get('weight_peer', 0))
+
+            if (w_github + w_deliv + w_peer) != 100:
+                messages.error(request, "Weights must sum to exactly 100%.")
+            else:
+                # 1. Update the Course Policy
+                policy.weight_github = w_github
+                policy.weight_deliverables = w_deliv
+                policy.weight_peer = w_peer
+                policy.save()
+
+                # 2. AGGRESSIVE CASCADE: Force update EVERY project under this course
+                Project.objects.filter(section__course=course).update(
+                    weight_github=w_github,
+                    weight_deliverables=w_deliv,
+                    weight_peer=w_peer
+                )
+
+                # 3. Reset any pending requests since the policy just changed
+                PolicyChangeRequest.objects.filter(project__section__course=course, status='PENDING').delete()
+
+                messages.success(request,
+                                 f"Policy updated and forcefully synced to ALL projects in {course.course_code}.")
+        except ValueError:
+            messages.error(request, "Invalid input for weights.")
+
+    return redirect('coordinator_courses')
