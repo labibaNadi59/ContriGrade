@@ -245,6 +245,7 @@ def evaluate_teammate(request, team_id, teammate_id):
 
 @login_required
 def project_master_report(request, project_id):
+    """Master Class Report: Evaluates all teams and students across the entire project."""
     if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
         messages.error(request, "Access denied. Instructor privileges required.")
         return redirect('student_dashboard')
@@ -258,7 +259,7 @@ def project_master_report(request, project_id):
     report_results = calculate_project_contribution_scores(project, force_refresh=force_refresh)
     master_data = report_results['master_data']
 
-    # Intercept the request and generate a CSV if requested
+    # Export to CSV if requested
     if request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv')
         safe_title = project.title.replace(' ', '_').replace('/', '-')
@@ -308,6 +309,46 @@ def project_master_report(request, project_id):
         'project_total_commits': report_results['project_total_commits']
     })
 
+
+@login_required
+def team_contribution_scores(request, team_id):
+    """Single Team View: Displays the 3-pillar score breakdown for one specific team."""
+    if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
+        messages.error(request, "Access denied. Instructor privileges required.")
+        return redirect('student_dashboard')
+
+    if request.user.role in ['ADMIN', 'COORDINATOR']:
+        team = get_object_or_404(Team.objects.select_related('project'), pk=team_id)
+    else:
+        team = get_object_or_404(
+            Team.objects.select_related('project'),
+            pk=team_id,
+            project__section__instructor=request.user
+        )
+
+    project = team.project
+    force_refresh = request.GET.get('refresh') == 'true'
+
+    # Calculate scores strictly for this single team
+    results = calculate_project_contribution_scores(
+        project,
+        force_refresh=force_refresh,
+        target_team=team
+    )
+    team_members_data = results['master_data']
+
+    # Calculate team average score
+    avg_score = 0.0
+    if team_members_data:
+        avg_score = round(sum(m['final_score'] for m in team_members_data) / len(team_members_data), 1)
+
+    return render(request, 'academic/team_contribution_scores.html', {
+        'team': team,
+        'project': project,
+        'members_data': team_members_data,
+        'team_avg_score': avg_score,
+        'team_total_commits': results['project_total_commits'],
+    })
 
 @login_required
 def reports_hub(request):
