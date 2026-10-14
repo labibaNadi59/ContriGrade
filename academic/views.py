@@ -11,7 +11,7 @@ from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionFor
     StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm, ProjectCreateForm
 from django.shortcuts import get_object_or_404
 from accounts.models import User
-from .utils import fetch_team_commits, analyze_team_contributions
+from .utils import fetch_team_commits, analyze_team_contributions, calculate_project_contribution_scores
 import csv
 from django.http import HttpResponse
 from django.http import JsonResponse
@@ -254,58 +254,31 @@ def project_master_report(request, project_id):
     else:
         project = get_object_or_404(Project, pk=project_id, section__instructor=request.user)
 
-    teams = project.teams.all()
-
-    master_data = []
-    project_total_commits = 0
-    teams_with_repos = 0
-
-    # Check if the user clicked the refresh button
     force_refresh = request.GET.get('refresh') == 'true'
-    # Aggregate data from all teams
-    for team in teams:
-        if team.github_repo_url:
-            teams_with_repos += 1
-            fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
+    report_results = calculate_project_contribution_scores(project, force_refresh=force_refresh)
+    master_data = report_results['master_data']
 
-            if fetch_result['status'] == 'success':
-                analytics = analyze_team_contributions(team, fetch_result['commits'])
-                project_total_commits += analytics['total_commits']
-
-                for pk, student in analytics['mapped_students'].items():
-                    master_data.append({
-                        'name': student['name'],
-                        'team_name': team.team_name,
-                        'github_username': student['github_username'],
-                        'role': student['role'],
-                        'commit_count': student['commit_count'],
-                        'total_additions': student.get('total_additions', 0),
-                        'total_deletions': student.get('total_deletions', 0),
-                        'flags': student.get('flags', [])
-                    })
-
-    # Sort students by highest commit count by default
-    master_data.sort(key=lambda x: x['commit_count'], reverse=True)
-
-    # Intercept the request and generate a CSV if requested ---
+    # Intercept the request and generate a CSV if requested
     if request.GET.get('export') == 'csv':
-        # Tell the browser this is a CSV file download
         response = HttpResponse(content_type='text/csv')
-
-        # Clean the project title to make a nice filename (e.g., "Web_Dev_101_Grades.csv")
         safe_title = project.title.replace(' ', '_').replace('/', '-')
-        response['Content-Disposition'] = f'attachment; filename="{safe_title}_Report.csv"'
+        response['Content-Disposition'] = f'attachment; filename="{safe_title}_Master_Report.csv"'
 
         writer = csv.writer(response)
+        writer.writerow([
+            'Student Name', 'GitHub Username', 'Team', 'Role',
+            'Commits', 'Lines Added', 'Lines Deleted',
+            'Verified Deliverables', 'Peer Reviews Received',
+            f'GitHub Score ({project.weight_github}%)',
+            f'Deliverables Score ({project.weight_deliverables}%)',
+            f'Peer Eval Score ({project.weight_peer}%)',
+            'Final Weighted Score (%)',
+            'Evidence Status', 'Integrity Flags'
+        ])
 
-        # Write the Header Row
-        writer.writerow(['Student Name', 'GitHub Username', 'Team', 'Role', 'Commits', 'Lines Added', 'Lines Deleted',
-                         'Integrity Flags'])
-
-        # Write the Data Rows
         for student in master_data:
-            # Combine the orange flags into a single readable string, or write 'Clean'
             flags_str = " | ".join(student.get('flags', [])) if student.get('flags') else "Clean"
+            notes_str = ", ".join(student.get('evidence_notes', [])) if student.get('evidence_notes') else "Complete"
 
             writer.writerow([
                 student['name'],
@@ -313,19 +286,26 @@ def project_master_report(request, project_id):
                 student['team_name'],
                 student['role'] or 'Unassigned',
                 student['commit_count'],
-                student.get('total_additions', 0),
-                student.get('total_deletions', 0),
+                student['total_additions'],
+                student['total_deletions'],
+                student['verified_deliverables'],
+                student['peer_reviews_count'],
+                f"{student['github_score']}%" if student['github_score'] is not None else 'N/A',
+                f"{student['deliverables_score']}%" if student['deliverables_score'] is not None else 'N/A',
+                f"{student['peer_score']}%" if student['peer_score'] is not None else 'N/A',
+                f"{student['final_score']}%",
+                notes_str,
                 flags_str
             ])
 
         return response
-    # -----------------------------------------------------------------
+
     return render(request, 'academic/master_report.html', {
         'project': project,
         'master_data': master_data,
-        'total_teams': teams.count(),
-        'teams_with_repos': teams_with_repos,
-        'project_total_commits': project_total_commits
+        'total_teams': report_results['total_teams'],
+        'teams_with_repos': report_results['teams_with_repos'],
+        'project_total_commits': report_results['project_total_commits']
     })
 
 
