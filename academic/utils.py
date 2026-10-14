@@ -2,10 +2,11 @@ import requests
 from django.conf import settings
 import re
 from datetime import datetime
-from .models import TeamMember
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
 from django.core.cache import cache
+from .models import TeamMember, DeliverableContribution, PeerEvaluationScore
+
 
 def validate_github_connection():
     """Pings the GitHub API to verify the token is valid and active."""
@@ -327,3 +328,206 @@ def analyze_team_contributions(team, commits_data):
             student['percentage'] = 0
 
     return summary
+
+
+def calculate_project_contribution_scores(project, force_refresh=False):
+    """
+    Retrieves and normalizes GitHub, Non-Coding Deliverable, and Peer Evaluation
+    evidence for all eligible team members in a project, applying configured
+    weights and dynamic missing-evidence redistribution.
+    """
+    teams = project.teams.all()
+    team_ids = [t.pk for t in teams]
+
+    # 1. Batch Prefetch All Team Members (Avoids N+1 Queries)
+    all_members = TeamMember.objects.filter(team_id__in=team_ids).select_related('user', 'team')
+    members_by_team = defaultdict(list)
+    for tm in all_members:
+        members_by_team[tm.team_id].append(tm)
+
+    # 2. Batch Prefetch Verified Deliverable Contributions
+    verified_delivs = DeliverableContribution.objects.filter(
+        deliverable__team_id__in=team_ids,
+        status='VERIFIED'
+    ).select_related('deliverable')
+
+    team_verified_deliv_count = defaultdict(int)
+    student_verified_deliv_count = defaultdict(lambda: defaultdict(int))
+    for dc in verified_delivs:
+        t_id = dc.deliverable.team_id
+        team_verified_deliv_count[t_id] += 1
+        student_verified_deliv_count[t_id][dc.student_id] += 1
+
+    # 3. Batch Prefetch Peer Evaluation Scores
+    peer_scores = PeerEvaluationScore.objects.filter(
+        evaluation__team_id__in=team_ids
+    ).select_related('evaluation', 'criterion')
+
+    student_peer_earned = defaultdict(lambda: defaultdict(float))
+    student_peer_max = defaultdict(lambda: defaultdict(float))
+    student_peer_review_ids = defaultdict(lambda: defaultdict(set))
+
+    for ps in peer_scores:
+        t_id = ps.evaluation.team_id
+        eval_student_id = ps.evaluation.evaluatee_id
+        student_peer_earned[t_id][eval_student_id] += ps.score
+        student_peer_max[t_id][eval_student_id] += ps.criterion.max_score
+        student_peer_review_ids[t_id][eval_student_id].add(ps.evaluation_id)
+
+    # Configured Project Weights
+    w_gh = float(project.weight_github or 0)
+    w_deliv = float(project.weight_deliverables or 0)
+    w_peer = float(project.weight_peer or 0)
+
+    master_data = []
+    project_total_commits = 0
+    teams_with_repos = 0
+
+    # 4. Evaluate Each Team and Member
+    for team in teams:
+        t_id = team.pk
+        members = members_by_team.get(t_id, [])
+        num_members = len(members)
+        if num_members == 0:
+            continue
+
+        # --- A. GitHub Evidence Retrieval ---
+        gh_available = False
+        gh_analytics = None
+        if team.github_repo_url:
+            teams_with_repos += 1
+            fetch_result = fetch_team_commits(team, force_refresh=force_refresh)
+            if fetch_result.get('status') == 'success':
+                gh_available = True
+                gh_analytics = analyze_team_contributions(team, fetch_result['commits'])
+                project_total_commits += gh_analytics['total_commits']
+
+        total_team_impact = 0
+        if gh_available and gh_analytics:
+            for s_data in gh_analytics['mapped_students'].values():
+                total_team_impact += s_data.get('impact_score', 0)
+
+        expected_gh_impact = (total_team_impact / num_members) if num_members > 0 else 0
+
+        # --- B. Deliverables Evidence Check ---
+        total_team_delivs = team_verified_deliv_count[t_id]
+        deliv_available = total_team_delivs > 0
+        expected_delivs = (total_team_delivs / num_members) if num_members > 0 else 0
+
+        # --- C. Calculate Individual Scores per Student ---
+        for tm in members:
+            student = tm.user
+            s_id = student.pk
+            evidence_notes = []
+
+            # 1. Normalize GitHub Score (0 - 100)
+            s_gh_data = gh_analytics['mapped_students'].get(s_id, {}) if (gh_available and gh_analytics) else {}
+            commit_count = s_gh_data.get('commit_count', 0)
+            additions = s_gh_data.get('total_additions', 0)
+            deletions = s_gh_data.get('total_deletions', 0)
+            flags = list(s_gh_data.get('flags', []))
+            impact_score = s_gh_data.get('impact_score', 0)
+
+            if not team.github_repo_url:
+                gh_active = False
+                gh_score = None
+                evidence_notes.append("No Team Repo")
+            elif not gh_available:
+                gh_active = False
+                gh_score = None
+                evidence_notes.append("GitHub Sync Unavailable")
+            elif total_team_impact == 0:
+                gh_active = False
+                gh_score = None
+                evidence_notes.append("Zero Team Commits")
+            else:
+                gh_active = True
+                if impact_score == 0:
+                    gh_score = 0.0
+                    evidence_notes.append("0 Commits")
+                else:
+                    # Meeting team average yields 85%, exceeding scales up to 100%
+                    raw_gh = (impact_score / expected_gh_impact) * 85.0 if expected_gh_impact > 0 else 0.0
+                    gh_score = round(min(100.0, raw_gh), 1)
+
+            # 2. Normalize Deliverables Score (0 - 100)
+            s_deliv_count = student_verified_deliv_count[t_id][s_id]
+            if not deliv_available:
+                deliv_active = False
+                deliv_score = None
+                evidence_notes.append("No Verified Deliverables")
+            else:
+                deliv_active = True
+                if s_deliv_count == 0:
+                    deliv_score = 0.0
+                    evidence_notes.append("0 Verified Deliverables")
+                else:
+                    raw_deliv = (s_deliv_count / expected_delivs) * 85.0 if expected_delivs > 0 else 0.0
+                    deliv_score = round(min(100.0, raw_deliv), 1)
+
+            # 3. Normalize Peer Evaluation Score (0 - 100)
+            p_earned = student_peer_earned[t_id][s_id]
+            p_max = student_peer_max[t_id][s_id]
+            p_reviews_count = len(student_peer_review_ids[t_id][s_id])
+
+            if p_max == 0:
+                peer_active = False
+                peer_score = None
+                evidence_notes.append("No Peer Reviews")
+            else:
+                peer_active = True
+                peer_score = round(min(100.0, (p_earned / p_max) * 100.0), 1)
+
+            # 4. Dynamic Weight Redistribution & Final Score Calculation
+            active_weight_sum = 0.0
+            weighted_sum = 0.0
+
+            if gh_active and w_gh > 0:
+                active_weight_sum += w_gh
+                weighted_sum += gh_score * w_gh
+
+            if deliv_active and w_deliv > 0:
+                active_weight_sum += w_deliv
+                weighted_sum += deliv_score * w_deliv
+
+            if peer_active and w_peer > 0:
+                active_weight_sum += w_peer
+                weighted_sum += peer_score * w_peer
+
+            if active_weight_sum > 0:
+                final_score = round(weighted_sum / active_weight_sum, 1)
+                is_redistributed = active_weight_sum < 100.0
+            else:
+                final_score = 0.0
+                is_redistributed = False
+                evidence_notes = ["Awaiting Evidence"]
+
+            master_data.append({
+                'student_id': s_id,
+                'name': student.name,
+                'team_name': team.team_name,
+                'github_username': student.github_username,
+                'role': tm.role_in_team,
+                'commit_count': commit_count,
+                'total_additions': additions,
+                'total_deletions': deletions,
+                'verified_deliverables': s_deliv_count,
+                'peer_reviews_count': p_reviews_count,
+                'github_score': gh_score,
+                'deliverables_score': deliv_score,
+                'peer_score': peer_score,
+                'final_score': final_score,
+                'is_redistributed': is_redistributed,
+                'evidence_notes': evidence_notes,
+                'flags': flags,
+            })
+
+    # Sort students by Final Weighted Score (highest first), then by commit count
+    master_data.sort(key=lambda x: (x['final_score'], x['commit_count']), reverse=True)
+
+    return {
+        'master_data': master_data,
+        'total_teams': len(teams),
+        'teams_with_repos': teams_with_repos,
+        'project_total_commits': project_total_commits,
+    }

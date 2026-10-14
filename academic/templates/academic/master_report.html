@@ -11,7 +11,6 @@
     <i class="fa-solid fa-users w-5"></i>
     <span>Teams</span>
 </a>
-
 <a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
     <i class="fa-solid fa-chart-line w-5"></i>
     <span>Reports</span>
@@ -22,36 +21,34 @@
 
 <style>
     @media print {
-        /* Forces the browser to print  Tailwind background colors */
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; }
-
-        /* Removes scrollbars so the whole table prints */
         main { padding: 0 !important; overflow: visible !important; }
         .overflow-x-auto { overflow: visible !important; }
-
-        /* Hides the print button itself on the paper */
         .no-print { display: none !important; }
     }
 </style>
-
-<!-- Update  print button to have the no-print class -->
 
 <div class="max-w-7xl mx-auto">
     <!-- Header -->
     <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <div class="flex items-center gap-2 mb-1">
-                <a href="javascript:history.back()" class="text-gray-500 hover:text-blue-600 transition">
+                <a href="javascript:history.back()" class="text-gray-500 hover:text-blue-600 transition no-print">
                     <i class="fa-solid fa-arrow-left"></i>
                 </a>
                 <h2 class="text-2xl font-bold text-gray-800">Master Class Report</h2>
             </div>
-            <p class="text-sm text-gray-500 ml-6">Project: <strong>{{ project.title }}</strong></p>
+            <p class="text-sm text-gray-500 ml-6">
+                Project: <strong>{{ project.title }}</strong>
+                <span class="mx-2 text-gray-300">|</span>
+                <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+                    Policy Weights: GitHub {{ project.weight_github }}% &bull; Deliverables {{ project.weight_deliverables }}% &bull; Peer {{ project.weight_peer }}%
+                </span>
+            </p>
         </div>
-        
-        <div class="flex space-x-3 no-print">
 
-            <!--  Download CSV Button -->
+        <div class="flex space-x-3 no-print">
+            <!-- Download CSV Button -->
             <a href="?export=csv" class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-100 transition shadow-sm flex items-center">
                 <i class="fa-solid fa-file-csv mr-1.5 text-lg"></i> Download CSV
             </a>
@@ -83,8 +80,8 @@
             <p class="text-2xl font-black text-blue-600">{{ teams_with_repos }} <span class="text-sm text-gray-400 font-medium">/ {{ total_teams }}</span></p>
         </div>
         <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">System Status</p>
-            <p class="text-sm font-bold text-green-600 mt-2"><i class="fa-solid fa-circle-check mr-1"></i> Live API Sync</p>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Scoring Engine</p>
+            <p class="text-sm font-bold text-green-600 mt-2"><i class="fa-solid fa-calculator mr-1"></i> Weighted Policy Active</p>
         </div>
     </div>
 
@@ -93,65 +90,108 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
-                        <th class="p-4 font-bold">Student Name</th>
-                        <th class="p-4 font-bold">Team</th>
-                        <th class="p-4 font-bold text-center">Commits</th>
-                        <th class="p-4 font-bold text-center">Lines of Code</th>
-                        <th class="p-4 font-bold">Integrity Analysis</th>
+                    <tr class="bg-gray-50 border-b border-gray-200 text-[11px] uppercase tracking-wider text-gray-500">
+                        <th class="p-4 font-bold">Student & Team</th>
+                        <th class="p-4 font-bold text-center">GitHub ({{ project.weight_github }}%)</th>
+                        <th class="p-4 font-bold text-center">Deliverables ({{ project.weight_deliverables }}%)</th>
+                        <th class="p-4 font-bold text-center">Peer Eval ({{ project.weight_peer }}%)</th>
+                        <th class="p-4 font-bold text-center bg-indigo-50/60 text-indigo-900">Final Score</th>
+                        <th class="p-4 font-bold">Integrity & Evidence Status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     {% for student in master_data %}
                     <tr class="hover:bg-gray-50 transition">
-                        <!-- Student Info -->
+                        <!-- Student & Team Info -->
                         <td class="p-4">
                             <p class="font-bold text-gray-900">{{ student.name }}</p>
-                            <p class="text-xs text-gray-500"><i class="fa-brands fa-github mr-1"></i> {{ student.github_username|default:"Missing ID" }}</p>
+                            <p class="text-xs text-gray-500 mb-1">
+                                <i class="fa-brands fa-github mr-1"></i> {{ student.github_username|default:"Missing ID" }}
+                            </p>
+                            <span class="inline-block text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
+                                {{ student.team_name }} &bull; {{ student.role|default:"Member" }}
+                            </span>
                         </td>
-                        
-                        <!-- Team Info -->
-                        <td class="p-4">
-                            <p class="font-semibold text-gray-700">{{ student.team_name }}</p>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">{{ student.role|default:"Unassigned" }}</p>
-                        </td>
-                        
-                        <!-- Commit Count -->
+
+                        <!-- GitHub Pillar -->
                         <td class="p-4 text-center">
-                            <span class="text-lg font-black text-blue-600">{{ student.commit_count }}</span>
-                        </td>
-                        
-                        <!-- Lines of Code (Add/Del) -->
-                        <td class="p-4 text-center whitespace-nowrap">
-                            <span class="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200 mr-1" title="Additions">
-                                +{{ student.total_additions }}
-                            </span>
-                            <span class="text-xs font-bold text-red-700 bg-red-50 px-2 py-1 rounded border border-red-200" title="Deletions">
-                                -{{ student.total_deletions }}
-                            </span>
-                        </td>
-                        
-                        <!-- Heuristic Flags -->
-                        <td class="p-4">
-                            {% if student.flags %}
-                                <div class="flex flex-col gap-1.5">
-                                    {% for flag in student.flags %}
-                                        <span class="inline-flex items-center text-[10px] font-bold px-2 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded shadow-sm">
-                                            <i class="fa-solid fa-flag text-orange-500 mr-1.5"></i> {{ flag }}
-                                        </span>
-                                    {% endfor %}
-                                </div>
+                            {% if student.github_score is not None %}
+                                <div class="text-base font-black text-slate-800">{{ student.github_score }}%</div>
                             {% else %}
-                                <span class="inline-flex items-center text-xs font-bold text-green-600">
-                                    <i class="fa-solid fa-check text-green-500 mr-1.5"></i> Clean
+                                <div class="text-xs font-bold text-gray-400 italic">N/A</div>
+                            {% endif %}
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                <span class="font-bold text-blue-600">{{ student.commit_count }}</span> commits
+                            </div>
+                            <div class="mt-0.5 whitespace-nowrap">
+                                <span class="text-[10px] font-bold text-green-700">+{{ student.total_additions }}</span> /
+                                <span class="text-[10px] font-bold text-red-700">-{{ student.total_deletions }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Deliverables Pillar -->
+                        <td class="p-4 text-center">
+                            {% if student.deliverables_score is not None %}
+                                <div class="text-base font-black text-slate-800">{{ student.deliverables_score }}%</div>
+                            {% else %}
+                                <div class="text-xs font-bold text-gray-400 italic">N/A</div>
+                            {% endif %}
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                <span class="font-bold text-indigo-600">{{ student.verified_deliverables }}</span> verified
+                            </div>
+                        </td>
+
+                        <!-- Peer Evaluation Pillar -->
+                        <td class="p-4 text-center">
+                            {% if student.peer_score is not None %}
+                                <div class="text-base font-black text-slate-800">{{ student.peer_score }}%</div>
+                            {% else %}
+                                <div class="text-xs font-bold text-gray-400 italic">N/A</div>
+                            {% endif %}
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                <span class="font-bold text-purple-600">{{ student.peer_reviews_count }}</span> reviews
+                            </div>
+                        </td>
+
+                        <!-- Final Weighted Score -->
+                        <td class="p-4 text-center bg-indigo-50/30">
+                            <span class="text-xl font-black {% if student.final_score >= 80 %}text-emerald-600{% elif student.final_score >= 50 %}text-indigo-600{% else %}text-red-600{% endif %}">
+                                {{ student.final_score }}%
+                            </span>
+                            {% if student.is_redistributed %}
+                                <span class="block text-[10px] font-bold text-amber-600 mt-0.5" title="Missing categories were dynamically redistributed across available evidence.">
+                                    <i class="fa-solid fa-scale-balanced"></i> Adjusted
                                 </span>
                             {% endif %}
+                        </td>
+
+                        <!-- Heuristic Flags & Missing Evidence Notes -->
+                        <td class="p-4">
+                            <div class="flex flex-col gap-1.5">
+                                {% for note in student.evidence_notes %}
+                                    <span class="inline-flex items-center text-[10px] font-bold px-2 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded">
+                                        <i class="fa-solid fa-circle-info text-slate-400 mr-1.5"></i> {{ note }}
+                                    </span>
+                                {% endfor %}
+
+                                {% for flag in student.flags %}
+                                    <span class="inline-flex items-center text-[10px] font-bold px-2 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded shadow-sm">
+                                        <i class="fa-solid fa-flag text-orange-500 mr-1.5"></i> {{ flag }}
+                                    </span>
+                                {% endfor %}
+
+                                {% if not student.flags and not student.evidence_notes %}
+                                    <span class="inline-flex items-center text-xs font-bold text-green-600">
+                                        <i class="fa-solid fa-check text-green-500 mr-1.5"></i> Complete &amp; Clean
+                                    </span>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="p-8 text-center text-gray-500">
-                            No data available. Teams may not have linked their repositories yet.
+                        <td colspan="6" class="p-8 text-center text-gray-500">
+                            No eligible team members found for this project yet.
                         </td>
                     </tr>
                     {% endfor %}
