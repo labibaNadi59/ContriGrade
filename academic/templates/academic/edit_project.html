@@ -40,113 +40,177 @@
     </div>
 
     <!-- TAB 1: Project Details Form -->
-<div id="tab-content-settings" class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-opacity duration-300">
-    <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-500"></div>
-    <h2 class="text-xl font-bold mb-6 border-b pb-4 text-slate-800">Edit Project Details</h2>
+    <div id="tab-content-settings" class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-opacity duration-300">
+        <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-500"></div>
+        <h2 class="text-xl font-bold mb-6 border-b pb-4 text-slate-800">Edit Project Details</h2>
 
-    <!-- Main Settings Form -->
-    <!-- Main Settings Form -->
-    <form method="post" action="">
-        {% csrf_token %}
-        <input type="hidden" name="update_project" value="1">
+        <!-- Main Settings Form -->
+        <form method="post" action="">
+            {% csrf_token %}
+            <input type="hidden" name="update_project" value="1">
 
-        {% if form.non_field_errors %}
-            <div class="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 mb-6 font-bold text-sm">
-                {{ form.non_field_errors }}
-            </div>
-        {% endif %}
+            {% if form.non_field_errors %}
+                <div class="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 mb-6 font-bold text-sm">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
 
-        <div class="space-y-6">
-            <!-- Standard Details -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-slate-700 mb-1">Project Title</label>
-                    {{ form.title }}
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-1">Course Section</label>
-                    {{ form.section }}
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-1">Deadline</label>
-                    {{ form.deadline }}
-                    <span class="text-xs text-red-500">{{ form.deadline.errors }}</span>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-slate-700 mb-1">Description</label>
-                    {{ form.description }}
-                </div>
-            </div>
-
-            <!-- NEW: Assessment Weights Configuration -->
-            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-6">
-                <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-3">
-                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-scale-balanced text-blue-500"></i> Contribution Weights
-                    </h3>
-                    <div id="weight-tracker" class="px-3 py-1 rounded-full text-xs font-bold border bg-white text-slate-500">
-                        Total: <span id="weight-total">100</span>%
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">GitHub Analytics</label>
-                        <div class="relative">
-                            {{ form.weight_github }}
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold">%</div>
-                        </div>
+            <div class="space-y-6">
+                <!-- Standard Details -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Project Title</label>
+                        {{ form.title }}
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Deliverables</label>
-                        <div class="relative">
-                            {{ form.weight_deliverables }}
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold">%</div>
-                        </div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Course Section</label>
+                        {{ form.section }}
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Peer Evaluation</label>
-                        <div class="relative">
-                            {{ form.weight_peer }}
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold">%</div>
-                        </div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Deadline</label>
+                        {{ form.deadline }}
+                        <span class="text-xs text-red-500">{{ form.deadline.errors }}</span>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Description</label>
+                        {{ form.description }}
                     </div>
                 </div>
-                <p class="text-xs text-slate-500 mt-3 italic">Values must sum exactly to 100% to save the project configuration.</p>
+
+                <!-- Assessment Weights Configuration (Locked View) -->
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-6 relative overflow-hidden">
+
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-slate-200 pb-3 gap-3">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-scale-balanced text-blue-500"></i> Active Contribution Weights
+                        </h3>
+                        <span class="px-3 py-1 bg-slate-200 text-slate-600 text-[10px] font-extrabold uppercase tracking-wider rounded border border-slate-300 flex items-center gap-1">
+                            <i class="fa-solid fa-lock"></i> Locked by Policy
+                        </span>
+                    </div>
+
+                    <!-- Locked Inputs Container (Handled by JS on load) -->
+                    <div id="locked-weights-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 opacity-75 pointer-events-none">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">GitHub Analytics</label>
+                            <div class="relative">
+                                {{ form.weight_github }}
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 font-bold">%</div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Deliverables</label>
+                            <div class="relative">
+                                {{ form.weight_deliverables }}
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 font-bold">%</div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Peer Evaluation</label>
+                            <div class="relative">
+                                {{ form.weight_peer }}
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 font-bold">%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Policy Request Trigger -->
+                    <div class="mt-5 pt-4 border-t border-slate-200 flex justify-between items-center">
+                        <p class="text-xs text-slate-500 max-w-sm">These weights are inherited from the standardized course policy. You must submit a request to modify them.</p>
+                        <button type="button" onclick="togglePolicyRequest()" class="shrink-0 bg-white border border-slate-300 text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 font-bold py-2 px-4 rounded-lg text-xs transition shadow-sm">
+                            Request Custom Policy
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <div class="mt-8 flex gap-3 border-t pt-6">
-            <button type="submit" id="save-project-btn" class="bg-blue-600 text-white font-bold py-2.5 px-8 rounded-lg hover:bg-blue-700 transition shadow-sm">
-                Save Project Changes
-            </button>
-        </div>
-    </form>
-
-    <!-- Danger Zone -->
-    <div class="mt-12 pt-8 border-t border-red-200">
-        <h3 class="text-lg font-bold text-red-600 mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-triangle-exclamation"></i> Danger Zone
-        </h3>
-
-        <div class="bg-red-50 border border-red-200 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h4 class="font-bold text-red-900 text-sm">Delete this project</h4>
-                <p class="text-xs text-red-700 mt-1 max-w-lg">
-                    Once you delete a project, there is no going back. This will permanently delete all associated teams, GitHub analytics, deliverables, and peer evaluations.
-                </p>
-            </div>
-
-            <form method="post" action="" class="shrink-0" onsubmit="return confirm('WARNING: Are you absolutely sure you want to permanently delete this project? All team data, grades, and submissions will be lost forever.');">
-                {% csrf_token %}
-                <input type="hidden" name="delete_project" value="1">
-                <button type="submit" class="bg-white border border-red-300 text-red-600 font-bold py-2.5 px-5 rounded-lg hover:bg-red-600 hover:text-white transition shadow-sm flex items-center gap-2">
-                    <i class="fa-solid fa-trash-can"></i> Delete Project
+            <div class="mt-8 flex gap-3 border-t pt-6">
+                <button type="submit" class="bg-blue-600 text-white font-bold py-2.5 px-8 rounded-lg hover:bg-blue-700 transition shadow-sm">
+                    Save Project Changes
                 </button>
+            </div>
+        </form>
+
+        <!-- Danger Zone -->
+        <div class="mt-12 pt-8 border-t border-red-200">
+            <h3 class="text-lg font-bold text-red-600 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i> Danger Zone
+            </h3>
+
+            <div class="bg-red-50 border border-red-200 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h4 class="font-bold text-red-900 text-sm">Delete this project</h4>
+                    <p class="text-xs text-red-700 mt-1 max-w-lg">
+                        Once you delete a project, there is no going back. This will permanently delete all associated teams, GitHub analytics, deliverables, and peer evaluations.
+                    </p>
+                </div>
+
+                <form method="post" action="" class="shrink-0" onsubmit="return confirm('WARNING: Are you absolutely sure you want to permanently delete this project? All team data, grades, and submissions will be lost forever.');">
+                    {% csrf_token %}
+                    <input type="hidden" name="delete_project" value="1">
+                    <button type="submit" class="bg-white border border-red-300 text-red-600 font-bold py-2.5 px-5 rounded-lg hover:bg-red-600 hover:text-white transition shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> Delete Project
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Policy Request Form Modal/Inline -->
+    <div id="policy-request-panel" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 transition-opacity">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl border border-slate-200 overflow-hidden relative">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-amber-500"></div>
+
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-code-pull-request text-amber-500"></i> Request Custom Grading Policy
+                </h3>
+                <button type="button" onclick="togglePolicyRequest()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form method="post" action="{% url 'submit_policy_request' project.pk %}" class="p-6">
+                {% csrf_token %}
+
+                <div class="mb-6 flex justify-between items-center bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                    <span class="text-sm font-bold text-amber-900">Proposed Weight Total:</span>
+                    <div id="req-weight-tracker" class="px-3 py-1 rounded-full text-xs font-bold border bg-white text-slate-500">
+                        <span id="req-weight-total">0</span>%
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">GitHub %</label>
+                        <input type="number" name="proposed_github" class="req-weight-input w-full rounded-lg border-slate-300 focus:border-amber-500 focus:ring-amber-500 shadow-sm text-sm" value="0" min="0" max="100" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Deliverables %</label>
+                        <input type="number" name="proposed_deliverables" class="req-weight-input w-full rounded-lg border-slate-300 focus:border-amber-500 focus:ring-amber-500 shadow-sm text-sm" value="0" min="0" max="100" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Peer Eval %</label>
+                        <input type="number" name="proposed_peer" class="req-weight-input w-full rounded-lg border-slate-300 focus:border-amber-500 focus:ring-amber-500 shadow-sm text-sm" value="0" min="0" max="100" required>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Academic Justification <span class="text-red-500">*</span></label>
+                    <textarea name="justification" rows="3" required class="w-full rounded-lg border-slate-300 focus:border-amber-500 focus:ring-amber-500 shadow-sm text-sm" placeholder="Provide a brief explanation to the Coordinator regarding why this specific project requires a deviation from the standard course policy..."></textarea>
+                </div>
+
+                <div class="flex gap-3 justify-end border-t border-slate-100 pt-5">
+                    <button type="button" onclick="togglePolicyRequest()" class="px-5 py-2.5 rounded-lg text-sm font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" id="submit-req-btn" disabled class="px-6 py-2.5 rounded-lg text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 transition shadow-sm opacity-50 cursor-not-allowed flex items-center gap-2">
+                        Submit for Approval <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
             </form>
         </div>
     </div>
-</div>
 
     <!-- TAB 2: Peer Evaluation Criteria -->
     <div id="tab-content-criteria" class="hidden bg-white p-8 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-opacity duration-300">
@@ -265,7 +329,7 @@
 
 </div>
 
-<!-- JavaScript to handle Tab Switching -->
+<!-- JavaScript to handle Tab Switching & Policy Form -->
 <script>
     function switchTab(tabName) {
         const btnSettings = document.getElementById('tab-btn-settings');
@@ -274,78 +338,35 @@
         const contentCriteria = document.getElementById('tab-content-criteria');
 
         if (tabName === 'settings') {
-            // Show Settings, Hide Criteria
             contentSettings.classList.remove('hidden');
             contentCriteria.classList.add('hidden');
-
-            // Activate Settings Button (Blue)
             btnSettings.classList.add('border-blue-500', 'text-blue-600');
             btnSettings.classList.remove('border-transparent', 'text-slate-500');
-
-            // Deactivate Criteria Button
             btnCriteria.classList.add('border-transparent', 'text-slate-500');
             btnCriteria.classList.remove('border-indigo-500', 'text-indigo-600');
-
-            // Clear hash so it doesn't get stuck
             history.pushState(null, null, ' ');
-
         } else if (tabName === 'criteria') {
-            // Show Criteria, Hide Settings
             contentCriteria.classList.remove('hidden');
             contentSettings.classList.add('hidden');
-
-            // Activate Criteria Button (Indigo)
             btnCriteria.classList.add('border-indigo-500', 'text-indigo-600');
             btnCriteria.classList.remove('border-transparent', 'text-slate-500');
-
-            // Deactivate Settings Button
             btnSettings.classList.add('border-transparent', 'text-slate-500');
             btnSettings.classList.remove('border-blue-500', 'text-blue-600');
-
-            // Set hash so URL reflects current state
             window.location.hash = 'peer-criteria';
         }
     }
 
-    // Run on page load to check if we came from the "Peer Rubric" dashboard button
     document.addEventListener('DOMContentLoaded', () => {
         if (window.location.hash === '#peer-criteria') {
             switchTab('criteria');
         }
-    });
 
-    // Live Weight Calculator
-    document.addEventListener('DOMContentLoaded', () => {
-        const inputs = document.querySelectorAll('.weight-input');
-        const tracker = document.getElementById('weight-tracker');
-        const totalSpan = document.getElementById('weight-total');
-        const saveBtn = document.getElementById('save-project-btn');
-
-        function calculateTotal() {
-            let total = 0;
-            inputs.forEach(input => {
-                total += parseInt(input.value) || 0;
-            });
-
-            totalSpan.textContent = total;
-
-            if (total === 100) {
-                tracker.className = 'px-3 py-1 rounded-full text-xs font-bold border bg-green-50 border-green-200 text-green-700';
-                saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                saveBtn.disabled = false;
-            } else {
-                tracker.className = 'px-3 py-1 rounded-full text-xs font-bold border bg-red-50 border-red-200 text-red-700';
-                saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                saveBtn.disabled = true;
-            }
+        // Ensure standard project form inputs are read-only to enforce policy lock
+        const lockedContainer = document.getElementById('locked-weights-container');
+        if(lockedContainer) {
+            const defaultInputs = lockedContainer.querySelectorAll('input');
+            defaultInputs.forEach(input => input.setAttribute('readonly', true));
         }
-
-        inputs.forEach(input => {
-            input.addEventListener('input', calculateTotal);
-        });
-
-        // Run once on load
-        calculateTotal();
     });
 
     function toggleEditCriterion(id) {
@@ -354,5 +375,44 @@
             formEl.classList.toggle('hidden');
         }
     }
+
+    function togglePolicyRequest() {
+        const panel = document.getElementById('policy-request-panel');
+        panel.classList.toggle('hidden');
+    }
+
+    // Policy Request Modal Live Calculator
+    document.addEventListener('DOMContentLoaded', () => {
+        const reqInputs = document.querySelectorAll('.req-weight-input');
+        const reqTracker = document.getElementById('req-weight-tracker');
+        const reqTotalSpan = document.getElementById('req-weight-total');
+        const reqSaveBtn = document.getElementById('submit-req-btn');
+
+        function calculateReqTotal() {
+            let total = 0;
+            reqInputs.forEach(input => {
+                total += parseInt(input.value) || 0;
+            });
+
+            reqTotalSpan.textContent = total;
+
+            if (total === 100) {
+                reqTracker.className = 'px-3 py-1 rounded-full text-xs font-bold border bg-green-50 border-green-200 text-green-700';
+                reqSaveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                reqSaveBtn.disabled = false;
+            } else {
+                reqTracker.className = 'px-3 py-1 rounded-full text-xs font-bold border bg-red-50 border-red-200 text-red-700';
+                reqSaveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                reqSaveBtn.disabled = true;
+            }
+        }
+
+        reqInputs.forEach(input => {
+            input.addEventListener('input', calculateReqTotal);
+        });
+
+        calculateReqTotal();
+    });
 </script>
 {% endblock %}
+

@@ -11,7 +11,6 @@
     <i class="fa-solid fa-users w-5"></i>
     <span>Teams</span>
 </a>
-
 <a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
     <i class="fa-solid fa-chart-line w-5"></i>
     <span>Reports</span>
@@ -28,14 +27,12 @@
             <p class="text-slate-500 text-sm mt-1">Overview for assessment sessions and project management.</p>
         </div>
 
-        <!-- Toggle Button -->
         <button onclick="toggleCreateForm()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-sm transition flex items-center gap-2">
             <i class="fa-solid fa-plus"></i> New Assessment Session
         </button>
     </div>
 
     <!-- Hidden Create Project Form Panel -->
-    <!-- If there are form errors, we remove the 'hidden' class so the user sees the mistakes immediately -->
     <div id="createProjectPanel" class="{% if not form.errors %}hidden{% endif %} mb-8 transition-all duration-300">
         <div class="bg-white p-8 rounded-2xl shadow-sm border border-blue-200 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-500"></div>
@@ -49,11 +46,48 @@
 
             <form method="post">
                 {% csrf_token %}
-                <div class="space-y-4 max-w-3xl">
-                    {{ form.as_p }}
+
+                {% if form.non_field_errors %}
+                    <div class="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 mb-6 font-bold text-sm">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <!-- Upgraded Grid Layout (Weights are hidden) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Project Title <span class="text-red-500">*</span></label>
+                        {{ form.title }}
+                        <span class="text-xs text-red-500 font-semibold">{{ form.title.errors }}</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Course Section <span class="text-red-500">*</span></label>
+                        {{ form.section }}
+                        <span class="text-xs text-red-500 font-semibold">{{ form.section.errors }}</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Project Deadline <span class="text-red-500">*</span></label>
+                        {{ form.deadline }}
+                        <span class="text-xs text-red-500 font-semibold">{{ form.deadline.errors }}</span>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Project Description</label>
+                        {{ form.description }}
+                        <span class="text-xs text-red-500 font-semibold">{{ form.description.errors }}</span>
+                    </div>
                 </div>
 
-                <div class="mt-8 flex justify-end">
+                <div class="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-lg max-w-4xl flex items-start gap-3">
+                    <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        <strong>Grading Policy Note:</strong> Assessment weights (GitHub, Deliverables, Peer Evaluation) will be automatically inherited from the standard course policy defined by the Coordinator. You can request custom weights from the Project Settings page after creation.
+                    </p>
+                </div>
+
+                <div class="mt-8 flex justify-end max-w-4xl">
                     <button type="submit" class="bg-blue-600 text-white font-bold py-2.5 px-8 rounded-xl hover:bg-blue-700 transition shadow-sm flex items-center gap-2">
                         Create Project <i class="fa-solid fa-arrow-right"></i>
                     </button>
@@ -62,7 +96,7 @@
         </div>
     </div>
 
-    <!-- Active Projects List (Now Full Width) -->
+    <!-- Active Projects List -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
@@ -76,7 +110,6 @@
                 {% for project in projects %}
                     <div class="p-5 hover:bg-slate-50 transition flex flex-col md:flex-row md:justify-between md:items-center gap-4">
 
-                        <!-- Left side: Project Title & Section -->
                         <div>
                             <h4 class="font-extrabold text-lg text-slate-900 mb-1">{{ project.title }}</h4>
                             <p class="text-sm font-semibold text-blue-600 flex items-center gap-1.5">
@@ -84,24 +117,18 @@
                             </p>
                         </div>
 
-                        <!-- Right side: Deadline & Buttons -->
                         <div class="flex flex-col items-start md:items-end gap-3 shrink-0">
                             <span class="text-xs font-bold px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg shadow-sm flex items-center gap-1.5">
                                 <i class="fa-regular fa-clock"></i> Deadline: {{ project.deadline|date:"M d, Y h:i A" }}
                             </span>
 
                             <div class="flex flex-wrap gap-2 mt-2">
-                                <!-- 1. Edit Project Settings Button -->
                                 <a href="{% url 'edit_project' project.pk %}" class="inline-flex items-center text-xs font-bold px-4 py-2 rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 hover:text-blue-600 transition shadow-sm">
                                     <i class="fa-solid fa-gear mr-1.5 text-slate-400"></i> Settings
                                 </a>
-
-                                <!-- 2.  Manage Peer Evaluation Criteria Button -->
                                 <a href="{% url 'edit_project' project.pk %}#peer-criteria" class="inline-flex items-center text-xs font-bold px-4 py-2 rounded-lg border border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 transition shadow-sm">
                                     <i class="fa-solid fa-list-check mr-1.5"></i> Peer Rubric
                                 </a>
-
-                                <!-- 3. Master Report Button -->
                                 <a href="{% url 'project_master_report' project.pk %}" class="inline-flex items-center text-xs font-bold px-4 py-2 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition shadow-sm">
                                     <i class="fa-solid fa-chart-pie mr-1.5"></i> Master Report
                                 </a>
@@ -125,15 +152,10 @@
     </div>
 </div>
 
-<!-- Simple script to toggle the form visibility -->
 <script>
     function toggleCreateForm() {
         const panel = document.getElementById('createProjectPanel');
-        if (panel.classList.contains('hidden')) {
-            panel.classList.remove('hidden');
-        } else {
-            panel.classList.add('hidden');
-        }
+        panel.classList.toggle('hidden');
     }
 </script>
 {% endblock %}
