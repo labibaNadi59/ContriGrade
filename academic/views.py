@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution, \
-    EvaluationCriterion, PeerEvaluation, PeerEvaluationScore, PolicyChangeRequest, CourseAssessmentPolicy
+    EvaluationCriterion, PeerEvaluation, PeerEvaluationScore, PolicyChangeRequest, CourseAssessmentPolicy, Notification
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
     StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm, ProjectCreateForm
 from django.shortcuts import get_object_or_404
@@ -713,29 +713,45 @@ def coordinator_requests(request):
 
 @login_required
 def review_policy_request(request, request_id):
-    if not request.user.is_coordinator: return redirect('dashboard_redirect')
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
     policy_request = get_object_or_404(PolicyChangeRequest, pk=request_id)
 
     if request.method == 'POST':
         action = request.POST.get('action')
+        project = policy_request.project
+
         if action == 'APPROVE':
             policy_request.status = 'APPROVED'
-            project = policy_request.project
             project.weight_github = policy_request.proposed_github
             project.weight_deliverables = policy_request.proposed_deliverables
             project.weight_peer = policy_request.proposed_peer
             project.save()
             messages.success(request, f"Approved custom grading policy for {project.title}.")
+
+            # NOTIFY THE INSTRUCTOR (APPROVED)
+            Notification.objects.create(
+                recipient=policy_request.instructor,
+                message=f"✅ Approved: Your custom grading policy for '{project.title}' has been approved.",
+                link=f"/instructor/project/{project.pk}/edit/"
+            )
+
         elif action == 'REJECT':
             policy_request.status = 'REJECTED'
-            messages.warning(request, f"Rejected custom policy request for {policy_request.project.title}.")
+            messages.warning(request, f"Rejected custom policy request for {project.title}.")
+
+            # NOTIFY THE INSTRUCTOR (REJECTED)
+            Notification.objects.create(
+                recipient=policy_request.instructor,
+                message=f"❌ Rejected: Your custom grading policy request for '{project.title}' was denied.",
+                link=f"/instructor/project/{project.pk}/edit/"
+            )
 
         policy_request.reviewed_at = timezone.now()
         policy_request.save()
 
-    # Redirect back to the dedicated requests inbox
     return redirect('coordinator_requests')
-
 
 
 @login_required
@@ -1089,3 +1105,16 @@ def update_course_policy(request, course_id):
             messages.error(request, "Invalid input for weights.")
 
     return redirect('coordinator_courses')
+
+
+@login_required
+def read_notification(request, notif_id):
+    notification = get_object_or_404(Notification, pk=notif_id, recipient=request.user)
+    notification.is_read = True
+    notification.save()
+
+    if notification.link:
+        return redirect(notification.link)
+    return redirect(request.META.get('HTTP_REFERER', 'dashboard_redirect'))
+
+

@@ -56,11 +56,57 @@
 
             <!-- Right Header Icons & Profile -->
             <div class="flex items-center space-x-4">
-                <button class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 relative transition">
-                    <i class="fa-regular fa-bell text-lg"></i>
-                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
 
+                <!-- Notification Dropdown Container -->
+                <div class="relative">
+                    <button onclick="toggleNotifications()" id="notif-btn" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 relative transition">
+                        <i class="fa-solid fa-bell text-lg pointer-events-none"></i>
+
+                        {% if unread_notifications_count > 0 %}
+                            <span class="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-red-500 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4 pointer-events-none">
+                                {{ unread_notifications_count }}
+                            </span>
+                        {% endif %}
+                    </button>
+
+                    <!-- Dropdown Menu (Hidden by default) -->
+                    <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                        <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+                            <span class="font-bold text-gray-800 text-sm">Notifications</span>
+                            {% if unread_notifications_count > 0 %}
+                                <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{{ unread_notifications_count }} New</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                            {% for notif in latest_notifications %}
+                                <a href="{% url 'read_notification' notif.pk %}" class="block p-4 hover:bg-gray-50 transition {% if not notif.is_read %}bg-blue-50/30{% endif %}">
+                                    <div class="flex gap-3">
+                                        <div class="shrink-0 mt-0.5">
+                                            {% if notif.is_read %}
+                                                <i class="fa-solid fa-bell text-gray-300"></i>
+                                            {% else %}
+                                                <span class="flex h-2.5 w-2.5 mt-1 relative">
+                                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-gray-800 {% if not notif.is_read %}font-semibold{% endif %}">{{ notif.message }}</p>
+                                            <p class="text-xs text-gray-400 mt-1">{{ notif.created_at|timesince }} ago</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            {% empty %}
+                                <div class="p-6 text-center text-gray-500 text-sm">
+                                    <i class="fa-regular fa-bell-slash text-2xl text-gray-300 mb-2 block"></i>
+                                    You have no notifications.
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+</div>
                 <!-- Gear Icon links to Profile Settings -->
                 <a href="{% url 'profile_settings' %}" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition">
                     <i class="fa-solid fa-gear text-lg"></i>
@@ -105,5 +151,21 @@
         </main>
     </div>
 
+
+<script>
+    function toggleNotifications() {
+        const dropdown = document.getElementById('notif-dropdown');
+        dropdown.classList.toggle('hidden');
+    }
+
+    // Close the dropdown if the user clicks outside of it
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('notif-dropdown');
+        const btn = document.getElementById('notif-btn');
+        if (!btn.contains(event.target) && !dropdown.contains(event.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+</script>
 </body>
 </html>
