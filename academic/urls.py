@@ -48,4 +48,7 @@ path('instructor/project/<int:project_id>/policy-request/', views.submit_policy_
     path('coordinator/requests/', views.coordinator_requests, name='coordinator_requests'),
 
 path('coordinator/courses/<int:course_id>/policy/', views.update_course_policy, name='update_course_policy'),
+
+path('notifications/<int:notif_id>/read/', views.read_notification, name='read_notification'),
+
 ]
