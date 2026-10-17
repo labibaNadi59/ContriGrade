@@ -2,6 +2,91 @@
 
 {% block title %}Profile Settings - ContriGrade{% endblock %}
 
+{% block sidebar_links %}
+    {% if request.user.is_coordinator or request.user.role == 'COORDINATOR' %}
+        <!-- Coordinator Sidebar -->
+        <!-- Overview Hub -->
+<a href="{% url 'coordinator_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_dashboard' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-chart-pie w-5"></i>
+    <span>Overview</span>
+</a>
+
+<!-- Courses -->
+<a href="{% url 'coordinator_courses' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_courses' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Curriculum Policies</span>
+</a>
+
+<!-- Sections -->
+<a href="{% url 'coordinator_sections' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_sections' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-chalkboard-user w-5"></i>
+    <span>Faculty Allocation</span>
+</a>
+
+<!-- Policy Requests Inbox -->
+<a href="{% url 'coordinator_requests' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_requests' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-inbox w-5"></i>
+    <span>Policy Requests</span>
+</a>
+
+    {% elif request.user.role == 'INSTRUCTOR' %}
+        <!-- Instructor Sidebar -->
+        <a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Projects</span>
+</a>
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-users w-5"></i>
+    <span>Teams</span>
+</a>
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-chart-line w-5"></i>
+    <span>Reports</span>
+</a>
+
+    {% elif request.user.is_student or request.user.role == 'STUDENT' %}
+        <!-- Student Sidebar -->
+        <!-- 2. My Projects Tab (Highlights if on student_dashboard or progress) -->
+<a href="{% url 'student_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition {% if request.resolver_match.url_name == 'student_dashboard' or request.resolver_match.url_name == 'student_team_progress' %}bg-blue-50 text-blue-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+    <i class="fa-solid fa-laptop-code w-5"></i>
+    <span>My Projects</span>
+</a>
+<!-- 1. My Courses Tab (Highlights if on student_courses) -->
+<a href="{% url 'student_courses' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition {% if request.resolver_match.url_name == 'student_courses' %}bg-blue-50 text-blue-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+    <i class="fa-solid fa-graduation-cap w-5"></i>
+    <span>My Courses</span>
+</a>
+
+    {% elif request.user.is_admin or request.user.role == 'ADMIN' %}
+        <!-- Admin Sidebar -->
+        <a href="{% url 'system_admin_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-server w-5"></i>
+    <span>System Control</span>
+</a>
+<a href="{% url 'admin_user_management' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'admin_user_management' %}bg-gray-900 text-white font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-user-gear w-5"></i>
+    <span>User Management</span>
+</a>
+<!-- API Settings Link -->
+<a href="{% url 'system_api_settings' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'system_api_settings' or '/management/api-settings/' in request.path %}bg-gray-900 text-white font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-gears w-5"></i>
+    <span>API Settings</span>
+</a>
+<a href="/admin/" target="_blank" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-sliders w-5"></i>
+    <span>Django Admin</span>
+</a>
+    {% endif %}
+
+    <!-- Active Profile Settings Indicator -->
+    <div class="pt-4 mt-4 border-t border-gray-100">
+        <a href="{% url 'profile_settings' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold shadow-sm">
+            <i class="fa-solid fa-user-gear w-5"></i>
+            <span>Profile Settings</span>
+        </a>
+    </div>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-2xl mx-auto">
     <div class="mb-4">
@@ -26,37 +111,37 @@
                 <p class="text-xs text-gray-400 mt-1">Your email is tied to your university account and cannot be changed.</p>
             </div>
 
-<!-- Full Name -->
-<div>
-    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-        {{ form.name.label }}
-    </label>
-    {{ form.name }}
-    {% if form.name.errors %}
-        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.name.errors.0 }}</p>
-    {% endif %}
-</div>
+            <!-- Full Name -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    {{ form.name.label }}
+                </label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
 
-<!-- Only render this block if the github_username field exists in the form -->
-{% if 'github_username' in form.fields %}
-    <div>
-        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-            {{ form.github_username.label }}
-        </label>
-        <div class="flex items-stretch">
-            <span class="flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-500 text-sm font-semibold">
-                <i class="fa-brands fa-github mr-1"></i> @
-            </span>
-            {{ form.github_username }}
-        </div>
-        {% if form.github_username.errors %}
-            <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.github_username.errors.0 }}</p>
-        {% endif %}
-        <p class="text-xs text-gray-500 mt-2 leading-relaxed">
-            <strong>Why do we need this?</strong> When your team submits a GitHub repository, ContriGrade uses this exact username to find your specific commits, lines of code written, and peer contributions to generate your final assessment graphs.
-        </p>
-    </div>
-{% endif %}
+            <!-- Only render this block if the github_username field exists in the form -->
+            {% if 'github_username' in form.fields %}
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        {{ form.github_username.label }}
+                    </label>
+                    <div class="flex items-stretch">
+                        <span class="flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-500 text-sm font-semibold">
+                            <i class="fa-brands fa-github mr-1"></i> @
+                        </span>
+                        {{ form.github_username }}
+                    </div>
+                    {% if form.github_username.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.github_username.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-xs text-gray-500 mt-2 leading-relaxed">
+                        <strong>Why do we need this?</strong> When your team submits a GitHub repository, ContriGrade uses this exact username to find your specific commits, lines of code written, and peer contributions to generate your final assessment graphs.
+                    </p>
+                </div>
+            {% endif %}
 
             <div class="pt-4 border-t border-gray-100 flex justify-end">
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">

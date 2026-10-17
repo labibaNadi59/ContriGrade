@@ -63,34 +63,60 @@
                         <p class="text-xs text-slate-500 font-semibold">{{ section.course.course_name }}</p>
                     </div>
 
-                    <div class="flex-1 max-w-md w-full">
-                        <form method="post" action="{% url 'section_update_instructor' section.section_id %}" class="flex items-center space-x-2">
-                            {% csrf_token %}
-                            <div class="relative w-full">
-                                <select name="instructor" class="w-full pl-4 pr-10 py-2.5 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 bg-white focus:ring-blue-500 focus:border-blue-500 transition appearance-none shadow-sm">
-                                    <option value="">-- Unassigned (Select Instructor) --</option>
-                                    {% for inst in instructors %}
-                                        <option value="{{ inst.user_id }}" {% if section.instructor and section.instructor.user_id == inst.user_id %}selected{% endif %}>
-                                            {{ inst.name }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                                    <i class="fa-solid fa-chevron-down text-slate-400 text-xs"></i>
+                    {% if section.course.coordinator == request.user %}
+                        <!-- AUTHORIZED COORDINATOR: Can assign instructor and delete section -->
+                        <div class="flex-1 max-w-md w-full">
+                            <form method="post" action="{% url 'section_update_instructor' section.section_id %}" class="flex items-center space-x-2">
+                                {% csrf_token %}
+                                <div class="relative w-full">
+                                    <select name="instructor" class="w-full pl-4 pr-10 py-2.5 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 bg-white focus:ring-blue-500 focus:border-blue-500 transition appearance-none shadow-sm">
+                                        <option value="">-- Unassigned (Select Instructor) --</option>
+                                        {% for inst in instructors %}
+                                            <option value="{{ inst.user_id }}" {% if section.instructor and section.instructor.user_id == inst.user_id %}selected{% endif %}>
+                                                {{ inst.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                                        <i class="fa-solid fa-chevron-down text-slate-400 text-xs"></i>
+                                    </div>
                                 </div>
-                            </div>
-                            <button type="submit" class="bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-900 transition shadow-sm shrink-0">
-                                Save
+                                <button type="submit" class="bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-900 transition shadow-sm shrink-0">
+                                    Save
+                                </button>
+                            </form>
+                        </div>
+
+                        <form method="post" action="{% url 'section_delete' section.section_id %}" onsubmit="return confirm('WARNING: Are you sure you want to permanently delete this section? All associated student data will be lost.');" class="shrink-0 mt-2 md:mt-0">
+                            {% csrf_token %}
+                            <button type="submit" class="text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 p-2.5 rounded-lg border border-slate-200 hover:border-red-200 shadow-sm transition" title="Delete Section">
+                                <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </form>
-                    </div>
-                    
-                    <form method="post" action="{% url 'section_delete' section.section_id %}" onsubmit="return confirm('WARNING: Are you sure you want to permanently delete this section? All associated student data will be lost.');" class="shrink-0 mt-2 md:mt-0">
-                        {% csrf_token %}
-                        <button type="submit" class="text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 p-2.5 rounded-lg border border-slate-200 hover:border-red-200 shadow-sm transition" title="Delete Section">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </form>
+
+                    {% else %}
+                        <!-- OTHER COORDINATOR: Read-only instructor display + Lock button that triggers the warning message -->
+                        <div class="flex-1 max-w-md w-full flex items-center justify-between bg-white px-4 py-2.5 border border-slate-200 rounded-lg">
+                            <span class="text-sm font-semibold text-slate-600">
+                                <i class="fa-solid fa-chalkboard-user text-slate-400 mr-1.5"></i>
+                                {% if section.instructor %}{{ section.instructor.name }}{% else %}<span class="italic text-slate-400">Unassigned</span>{% endif %}
+                            </span>
+                            <form method="post" action="{% url 'section_update_instructor' section.section_id %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" class="text-slate-400 hover:text-red-500 text-xs font-semibold transition flex items-center gap-1" title="Managed by {{ section.course.coordinator.name }}">
+                                    <i class="fa-solid fa-lock text-[10px]"></i> {{ section.course.coordinator.name }}
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Disabled/Locked Delete Icon (triggers warning if clicked) -->
+                        <form method="post" action="{% url 'section_delete' section.section_id %}" class="shrink-0 mt-2 md:mt-0">
+                            {% csrf_token %}
+                            <button type="submit" class="text-slate-300 hover:text-red-500 bg-slate-100 p-2.5 rounded-lg border border-slate-200 transition" title="Managed by {{ section.course.coordinator.name }}">
+                                <i class="fa-solid fa-lock"></i>
+                            </button>
+                        </form>
+                    {% endif %}
                 </div>
             {% empty %}
                 <div class="p-12 text-center border border-dashed border-slate-300 rounded-xl bg-slate-50">

@@ -3,13 +3,37 @@
 {% block title %}Create Course - ContriGrade{% endblock %}
 
 {% block sidebar_links %}
-<a href="{% url 'coordinator_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
-    <i class="fa-solid fa-layer-group w-5"></i>
-    <span>Overview & Management</span>
+<!-- Overview Hub -->
+<a href="{% url 'coordinator_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_dashboard' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-chart-pie w-5"></i>
+    <span>Overview</span>
+</a>
+
+<!-- Courses -->
+<a href="{% url 'coordinator_courses' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_courses' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Curriculum Policies</span>
+</a>
+
+<!-- Sections -->
+<a href="{% url 'coordinator_sections' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_sections' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-chalkboard-user w-5"></i>
+    <span>Faculty Allocation</span>
+</a>
+
+<!-- Policy Requests Inbox -->
+<a href="{% url 'coordinator_requests' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'coordinator_requests' %}bg-indigo-50 text-indigo-700 font-bold shadow-sm{% else %}text-slate-600 hover:bg-slate-50 font-semibold{% endif %}">
+    <i class="fa-solid fa-inbox w-5"></i>
+    <span>Policy Requests</span>
 </a>
 {% endblock %}
 
 {% block content %}
+<div class="flex items-center gap-3 mb-6">
+        <a href="{% url 'coordinator_courses' %}" class="text-gray-400 hover:text-blue-600 transition">
+            <i class="fa-solid fa-arrow-left"></i> Back to Courses
+        </a>
+    </div>
 <div class="max-w-xl mx-auto">
     <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <h2 class="text-xl font-bold mb-4 border-b pb-2">Define New Course</h2>
