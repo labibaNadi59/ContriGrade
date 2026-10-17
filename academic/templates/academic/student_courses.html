@@ -2,17 +2,17 @@
 {% block title %}My Courses - ContriGrade{% endblock %}
 
 {% block sidebar_links %}
+<!-- 2. My Projects Tab (Highlights if on student_dashboard or progress) -->
+<a href="{% url 'student_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition {% if request.resolver_match.url_name == 'student_dashboard' or request.resolver_match.url_name == 'student_team_progress' %}bg-blue-50 text-blue-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+    <i class="fa-solid fa-laptop-code w-5"></i>
+    <span>My Projects</span>
+</a>
 <!-- 1. My Courses Tab (Highlights if on student_courses) -->
 <a href="{% url 'student_courses' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition {% if request.resolver_match.url_name == 'student_courses' %}bg-blue-50 text-blue-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
     <i class="fa-solid fa-graduation-cap w-5"></i>
     <span>My Courses</span>
 </a>
 
-<!-- 2. My Projects Tab (Highlights if on student_dashboard or progress) -->
-<a href="{% url 'student_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition {% if request.resolver_match.url_name == 'student_dashboard' or request.resolver_match.url_name == 'student_team_progress' %}bg-blue-50 text-blue-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
-    <i class="fa-solid fa-laptop-code w-5"></i>
-    <span>My Projects</span>
-</a>
 {% endblock %}
 
 {% block content %}

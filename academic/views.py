@@ -777,15 +777,29 @@ def review_policy_request(request, request_id):
 
 @login_required
 def section_create(request):
-    if not request.user.is_coordinator: return redirect('dashboard_redirect')
+    if not request.user.is_coordinator:
+        return redirect('dashboard_redirect')
+
     if request.method == 'POST':
         form = CourseSectionForm(request.POST)
+        #Restrict course choices strictly to courses owned by this coordinator
+        form.fields['course'].queryset = Course.objects.filter(coordinator=request.user)
+
         if form.is_valid():
-            form.save()
-            # Redirect to the new Sections page
+            section = form.save(commit=False)
+            # Double safety check before saving
+            if section.course.coordinator != request.user:
+                messages.error(request, "You are not authorized to create sections for this course.")
+                return redirect('coordinator_sections')
+
+            section.save()
+            messages.success(request, f"Created {section} successfully.")
             return redirect('coordinator_sections')
     else:
         form = CourseSectionForm()
+        # Only show this coordinator's courses in the dropdown
+        form.fields['course'].queryset = Course.objects.filter(coordinator=request.user)
+
     return render(request, 'academic/section_form.html', {'form': form})
 
 @login_required
@@ -794,6 +808,11 @@ def section_update_instructor(request, section_id):
         return redirect('dashboard_redirect')
 
     section = get_object_or_404(CourseSection, section_id=section_id)
+
+    # Security Check: Ensure this coordinator actually owns the parent course
+    if section.course.coordinator != request.user:
+        messages.error(request, "You are not authorized to edit sections for this course.")
+        return redirect('coordinator_sections')
 
     if request.method == 'POST':
         instructor_id = request.POST.get('instructor')
@@ -807,6 +826,7 @@ def section_update_instructor(request, section_id):
             section.instructor = None
 
         section.save()
+        messages.success(request, f"Instructor allocation updated for {section}.")
 
     return redirect('coordinator_sections')
 
@@ -817,11 +837,17 @@ def section_delete(request, section_id):
         return redirect('dashboard_redirect')
 
     section = get_object_or_404(CourseSection, section_id=section_id)
+
+    # Security Check: Ensure this coordinator actually owns the parent course
+    if section.course.coordinator != request.user:
+        messages.error(request, "You are not authorized to delete sections for this course.")
+        return redirect('coordinator_sections')
+
     if request.method == 'POST':
         section.delete()
+        messages.success(request, "Section deleted successfully.")
 
     return redirect('coordinator_sections')
-
 
 @login_required
 def course_create(request):

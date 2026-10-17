@@ -3,20 +3,26 @@
 {% block title %}System Administrator Dashboard - ContriGrade{% endblock %}
 
 {% block sidebar_links %}
-<a href="{% url 'system_admin_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+<!-- System Control Link -->
+<a href="{% url 'system_admin_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'system_admin_dashboard' %}bg-gray-900 text-white font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
     <i class="fa-solid fa-server w-5"></i>
     <span>System Control</span>
 </a>
-<a href="{% url 'admin_user_management' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+
+<!-- User Management Link -->
+<a href="{% url 'admin_user_management' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'admin_user_management' %}bg-gray-900 text-white font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
     <i class="fa-solid fa-user-gear w-5"></i>
     <span>User Management</span>
 </a>
 
-<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
-    <i class="fa-solid fa-chart-line w-5"></i>
-    <span>Reports</span>
+<!-- API Settings Link -->
+<a href="{% url 'system_api_settings' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'system_api_settings' or '/management/api-settings/' in request.path %}bg-gray-900 text-white font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-gears w-5"></i>
+    <span>API Settings</span>
 </a>
-<a href="/admin/" target="_blank" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+
+<!-- Django Admin Link -->
+<a href="/admin/" target="_blank" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
     <i class="fa-solid fa-sliders w-5"></i>
     <span>Django Admin</span>
 </a>
