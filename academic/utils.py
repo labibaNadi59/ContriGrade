@@ -330,16 +330,16 @@ def analyze_team_contributions(team, commits_data):
     return summary
 
 
-def calculate_project_contribution_scores(project, force_refresh=False):
+def calculate_project_contribution_scores(project, force_refresh=False, target_team=None):
     """
     Retrieves and normalizes GitHub, Non-Coding Deliverable, and Peer Evaluation
-    evidence for all eligible team members in a project, applying configured
-    weights and dynamic missing-evidence redistribution.
+    evidence for eligible team members. If `target_team` is provided, only
+    calculates scores for that specific team for instant loading.
     """
-    teams = project.teams.all()
+    teams = [target_team] if target_team else list(project.teams.all())
     team_ids = [t.pk for t in teams]
 
-    # 1. Batch Prefetch All Team Members (Avoids N+1 Queries)
+    # 1. Batch Prefetch All Team Members
     all_members = TeamMember.objects.filter(team_id__in=team_ids).select_related('user', 'team')
     members_by_team = defaultdict(list)
     for tm in all_members:
@@ -446,8 +446,7 @@ def calculate_project_contribution_scores(project, force_refresh=False):
                     gh_score = 0.0
                     evidence_notes.append("0 Commits")
                 else:
-                    # Meeting team average yields 85%, exceeding scales up to 100%
-                    raw_gh = (impact_score / expected_gh_impact) * 85.0 if expected_gh_impact > 0 else 0.0
+                    raw_gh = (impact_score / expected_gh_impact) * 80.0 if expected_gh_impact > 0 else 0.0
                     gh_score = round(min(100.0, raw_gh), 1)
 
             # 2. Normalize Deliverables Score (0 - 100)
@@ -462,7 +461,7 @@ def calculate_project_contribution_scores(project, force_refresh=False):
                     deliv_score = 0.0
                     evidence_notes.append("0 Verified Deliverables")
                 else:
-                    raw_deliv = (s_deliv_count / expected_delivs) * 85.0 if expected_delivs > 0 else 0.0
+                    raw_deliv = (s_deliv_count / expected_delivs) * 80.0 if expected_delivs > 0 else 0.0
                     deliv_score = round(min(100.0, raw_deliv), 1)
 
             # 3. Normalize Peer Evaluation Score (0 - 100)
@@ -497,9 +496,16 @@ def calculate_project_contribution_scores(project, force_refresh=False):
             if active_weight_sum > 0:
                 final_score = round(weighted_sum / active_weight_sum, 1)
                 is_redistributed = active_weight_sum < 100.0
+
+                # Calculate exact weighted points contributed to the 100-point total
+                pts_gh = round((gh_score * w_gh) / active_weight_sum, 1) if (gh_active and w_gh > 0) else 0.0
+                pts_deliv = round((deliv_score * w_deliv) / active_weight_sum, 1) if (
+                            deliv_active and w_deliv > 0) else 0.0
+                pts_peer = round((peer_score * w_peer) / active_weight_sum, 1) if (peer_active and w_peer > 0) else 0.0
             else:
                 final_score = 0.0
                 is_redistributed = False
+                pts_gh = pts_deliv = pts_peer = 0.0
                 evidence_notes = ["Awaiting Evidence"]
 
             master_data.append({
@@ -516,13 +522,15 @@ def calculate_project_contribution_scores(project, force_refresh=False):
                 'github_score': gh_score,
                 'deliverables_score': deliv_score,
                 'peer_score': peer_score,
+                'pts_github': pts_gh,
+                'pts_deliverables': pts_deliv,
+                'pts_peer': pts_peer,
                 'final_score': final_score,
                 'is_redistributed': is_redistributed,
                 'evidence_notes': evidence_notes,
                 'flags': flags,
             })
 
-    # Sort students by Final Weighted Score (highest first), then by commit count
     master_data.sort(key=lambda x: (x['final_score'], x['commit_count']), reverse=True)
 
     return {
