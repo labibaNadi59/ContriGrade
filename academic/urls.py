@@ -51,4 +51,6 @@ path('coordinator/courses/<int:course_id>/policy/', views.update_course_policy, 
 
 path('notifications/<int:notif_id>/read/', views.read_notification, name='read_notification'),
 path('instructor/team/<int:team_id>/scores/', views.team_contribution_scores, name='team_contribution_scores'),
+
+path('team/<int:team_id>/student/<int:student_id>/evidence/', views.student_evidence_detail, name='student_evidence_detail'),
 ]

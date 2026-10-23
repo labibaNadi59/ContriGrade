@@ -529,6 +529,14 @@ def calculate_project_contribution_scores(project, force_refresh=False, target_t
                 'is_redistributed': is_redistributed,
                 'evidence_notes': evidence_notes,
                 'flags': flags,
+
+                # Raw calculation variables for the UI Formula display
+                'gh_impact_score': round(impact_score, 2) if gh_active else 0,
+                'gh_expected_impact': round(expected_gh_impact, 2) if gh_active else 0,
+                'deliv_student_count': s_deliv_count,
+                'deliv_expected_count': round(expected_delivs, 2),
+                'peer_earned': round(p_earned, 2),
+                'peer_max': round(p_max, 2),
             })
 
     master_data.sort(key=lambda x: (x['final_score'], x['commit_count']), reverse=True)

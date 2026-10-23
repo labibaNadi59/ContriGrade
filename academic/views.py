@@ -1165,3 +1165,49 @@ def read_notification(request, notif_id):
     return redirect(request.META.get('HTTP_REFERER', 'dashboard_redirect'))
 
 
+@login_required
+def student_evidence_detail(request, team_id, student_id):
+    """Instructor view to drill down into the specific evidence calculating a student's final score."""
+    if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
+        messages.error(request, "Access denied.")
+        return redirect('student_dashboard')
+
+    team = get_object_or_404(Team.objects.select_related('project'), pk=team_id)
+    project = team.project
+
+    # Assuming User PK is user_id
+    target_student = get_object_or_404(User, user_id=student_id)
+
+    # 1. Fetch calculated math from existing engine
+    results = calculate_project_contribution_scores(project, force_refresh=False, target_team=team)
+
+    # 2. Isolate target student's scorecard data (USING 'student_id' key from utils.py)
+    student_data = next(
+        (member for member in results['master_data'] if member.get('student_id') == target_student.user_id), None)
+
+    if not student_data:
+        messages.error(request, "Student not found in this team's calculation.")
+        return redirect('team_contribution_scores', team_id=team.pk)
+
+    # 3. Fetch Raw Evidence from Database
+    # Verified Deliverables
+    verified_deliverables = DeliverableContribution.objects.filter(
+        student=target_student,
+        status='VERIFIED',
+        deliverable__team=team
+    ).select_related('deliverable')
+
+    # Peer Evaluations Received
+    peer_evals_received = PeerEvaluationScore.objects.filter(
+        evaluation__evaluatee=target_student,
+        evaluation__team=team
+    ).select_related('evaluation__evaluator', 'criterion')
+
+    return render(request, 'academic/student_evidence_detail.html', {
+        'team': team,
+        'project': project,
+        'student': target_student,
+        'score_data': student_data,
+        'deliverables': verified_deliverables,
+        'peer_evals': peer_evals_received,
+    })

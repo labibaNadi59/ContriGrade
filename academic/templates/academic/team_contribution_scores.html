@@ -186,9 +186,13 @@
                             <i class="fa-solid fa-scale-balanced mr-1"></i> Weights Adjusted
                         </span>
                     {% endif %}
-                </div>
 
-            </div>
+                    <!-- NEW EVIDENCE BUTTON -->
+<a href="{% url 'student_evidence_detail' team.pk student.student_id %}" class="mt-4 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm w-full text-center flex items-center justify-center gap-2">
+    <i class="fa-solid fa-magnifying-glass-chart"></i> View Evidence
+</a>
+                </div>
+            </div> <!-- End of the flex row containing Left, Middle, and Right -->
 
             <!-- Footer Bar for Flags or Missing Evidence Notes -->
             {% if student.flags or student.evidence_notes %}
