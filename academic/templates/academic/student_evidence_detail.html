@@ -1,0 +1,238 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Evidence: {{ student.name }} - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Projects</span>
+</a>
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-users w-5"></i>
+    <span>Teams</span>
+</a>
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+    <i class="fa-solid fa-chart-line w-5"></i>
+    <span>Reports</span>
+</a>
+
+<div class="pt-4 mt-4 border-t border-gray-200">
+    <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Team Views</p>
+
+    <a href="{% url 'team_analytics_dashboard' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_analytics_dashboard' %}bg-blue-50 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+        <i class="fa-brands fa-github w-5"></i>
+        <span>Code Analytics</span>
+    </a>
+
+    <a href="{% url 'team_deliverables_review' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_deliverables_review' %}bg-indigo-50 text-indigo-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+        <i class="fa-solid fa-file-signature w-5"></i>
+        <span>Peer Reviews</span>
+    </a>
+
+    <a href="{% url 'team_peer_evaluations' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_peer_evaluations' %}bg-purple-50 text-purple-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+        <i class="fa-solid fa-star-half-stroke w-5"></i>
+        <span>Peer Scores</span>
+    </a>
+
+    <a href="{% url 'team_contribution_scores' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_contribution_scores' %}bg-emerald-50 text-emerald-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+        <i class="fa-solid fa-ranking-star w-5"></i>
+        <span>Contribution Scores</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+        <a href="{% url 'team_contribution_scores' team.pk %}" class="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-600 transition mb-3">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Back to Team Scores
+        </a>
+        <h2 class="text-2xl font-extrabold text-slate-900">Contribution Evidence</h2>
+        <p class="text-sm text-slate-500 mt-1">
+            Analyzing evidence for <strong>{{ student.name }}</strong> in <strong>{{ team.team_name }}</strong>.
+        </p>
+    </div>
+
+    <!-- Final Score Formula Card -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-white to-slate-50">
+        <div>
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Final Weighted Score</h3>
+            <div class="flex items-center gap-3 font-bold text-slate-600 text-sm flex-wrap">
+                <span class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 shadow-sm">
+                    GitHub: {{ score_data.pts_github }} pts
+                </span>
+                <i class="fa-solid fa-plus text-slate-300"></i>
+                <span class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm">
+                    Tasks: {{ score_data.pts_deliverables }} pts
+                </span>
+                <i class="fa-solid fa-plus text-slate-300"></i>
+                <span class="bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-200 shadow-sm">
+                    Peer: {{ score_data.pts_peer }} pts
+                </span>
+            </div>
+        </div>
+        <div class="text-right border-l border-slate-200 pl-6">
+            <div class="text-4xl font-black text-emerald-600">{{ score_data.final_score }}%</div>
+            <div class="text-xs font-bold text-slate-400 uppercase mt-1">Calculated Total</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- 1. GitHub Evidence -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="bg-blue-50 border-b border-blue-100 p-4">
+                <h3 class="font-bold text-blue-900 flex items-center"><i class="fa-brands fa-github mr-2"></i> Code Contributions</h3>
+
+                <!-- Explicit Math Breakdown -->
+                <div class="mt-3 bg-white/80 p-3 rounded-lg border border-blue-100 text-xs text-blue-800 shadow-sm">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="font-bold text-blue-900">Component Score:</span>
+                        <span class="text-sm font-black">{{ score_data.github_score|default:"0.0" }}%</span>
+                    </div>
+
+                    <!-- Live Formula Injection -->
+                    <div class="mb-2.5 text-[10px] font-mono bg-blue-50/70 p-1.5 rounded-md border border-blue-200/50 text-blue-600 text-right shadow-inner" title="Formula: (Student Impact ÷ Team Average Impact) × 80">
+                        ({{ score_data.gh_impact_score|default:"0" }} impact ÷ {{ score_data.gh_expected_impact|default:"0" }} avg) × 80
+                    </div>
+
+                    <div class="flex justify-between font-bold text-blue-600 mb-2">
+                        <span>Policy Weight:</span>
+                        <span>× {{ project.weight_github }}%</span>
+                    </div>
+                  {% if score_data.is_redistributed %}
+<div class="text-[9px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 mb-2 text-right">
+    <i class="fa-solid fa-scale-balanced mr-1"></i> Scaled up (missing category weight redistributed)
+</div>
+{% endif %}
+                    <div class="flex justify-between border-t border-blue-200/60 pt-2 mt-1 items-center">
+                        <span class="font-extrabold uppercase tracking-wider text-[10px] text-blue-500">Points Earned</span>
+                        <span class="text-sm font-black text-blue-900">{{ score_data.pts_github }} pts</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 flex-1">
+                {% if score_data.github_score is not None %}
+                    <ul class="space-y-4 text-sm font-medium text-slate-700">
+                        <li class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">GitHub Username</span>
+                            <span class="font-bold text-slate-900">{{ score_data.github_username }}</span>
+                        </li>
+                        <li class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">Total Commits</span>
+                            <span class="font-bold text-slate-900">{{ score_data.commit_count }}</span>
+                        </li>
+                        <li class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">Lines Added</span>
+                            <span class="font-bold text-emerald-600">+{{ score_data.total_additions }}</span>
+                        </li>
+                        <li class="flex justify-between pb-1">
+                            <span class="text-slate-500">Lines Deleted</span>
+                            <span class="font-bold text-red-500">-{{ score_data.total_deletions }}</span>
+                        </li>
+                    </ul>
+                {% else %}
+                    <div class="text-center text-slate-400 italic text-sm mt-4">GitHub not connected or evaluated.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 2. Deliverables Evidence -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="bg-indigo-50 border-b border-indigo-100 p-4">
+                <h3 class="font-bold text-indigo-900 flex items-center"><i class="fa-solid fa-file-signature mr-2"></i> Verified Tasks</h3>
+
+                <!-- Explicit Math Breakdown -->
+                <div class="mt-3 bg-white/80 p-3 rounded-lg border border-indigo-100 text-xs text-indigo-800 shadow-sm">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="font-bold text-indigo-900">Component Score:</span>
+                        <span class="text-sm font-black">{{ score_data.deliverables_score|default:"0.0" }}%</span>
+                    </div>
+
+                    <!-- Live Formula Injection -->
+                    <div class="mb-2.5 text-[10px] font-mono bg-indigo-50/70 p-1.5 rounded-md border border-indigo-200/50 text-indigo-600 text-right shadow-inner" title="Formula: (Student Tasks ÷ Expected Team Average) × 80">
+                        ({{ score_data.deliv_student_count|default:"0" }} tasks ÷ {{ score_data.deliv_expected_count|default:"0" }} avg) × 80
+                    </div>
+
+                    <div class="flex justify-between font-bold text-indigo-600 mb-2">
+                        <span>Policy Weight:</span>
+                        <span>× {{ project.weight_deliverables }}%</span>
+                    </div>
+                    <div class="flex justify-between border-t border-indigo-200/60 pt-2 mt-1 items-center">
+                        <span class="font-extrabold uppercase tracking-wider text-[10px] text-indigo-500">Points Earned</span>
+                        <span class="text-sm font-black text-indigo-900">{{ score_data.pts_deliverables }} pts</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 flex-1 overflow-y-auto max-h-64">
+                {% if deliverables %}
+                    <ul class="space-y-3">
+                        {% for task in deliverables %}
+                            <li class="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm flex items-start gap-3">
+                                <i class="fa-solid fa-check-circle text-emerald-500 mt-1"></i>
+                                <div>
+                                    <p class="font-bold text-slate-800">{{ task.deliverable.title }}</p>
+                                    <p class="text-xs text-slate-500 mt-0.5">{{ task.contribution_area }}</p>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center text-slate-400 italic text-sm mt-4">No verified non-coding tasks found.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 3. Peer Evaluation Evidence -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="bg-purple-50 border-b border-purple-100 p-4">
+                <h3 class="font-bold text-purple-900 flex items-center"><i class="fa-solid fa-users mr-2"></i> Peer Ratings</h3>
+
+                <!-- Explicit Math Breakdown -->
+                <div class="mt-3 bg-white/80 p-3 rounded-lg border border-purple-100 text-xs text-purple-800 shadow-sm">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="font-bold text-purple-900">Component Score:</span>
+                        <span class="text-sm font-black">{{ score_data.peer_score|default:"0.0" }}%</span>
+                    </div>
+
+                    <!-- Live Formula Injection -->
+                    <div class="mb-2.5 text-[10px] font-mono bg-purple-50/70 p-1.5 rounded-md border border-purple-200/50 text-purple-600 text-right shadow-inner" title="Formula: (Points Earned ÷ Max Possible Points) × 100">
+                        ({{ score_data.peer_earned|default:"0" }} pts ÷ {{ score_data.peer_max|default:"0" }} max) × 100
+                    </div>
+
+                    <div class="flex justify-between font-bold text-purple-600 mb-2">
+                        <span>Policy Weight:</span>
+                        <span>× {{ project.weight_peer }}%</span>
+                    </div>
+                    <div class="flex justify-between border-t border-purple-200/60 pt-2 mt-1 items-center">
+                        <span class="font-extrabold uppercase tracking-wider text-[10px] text-purple-500">Points Earned</span>
+                        <span class="text-sm font-black text-purple-900">{{ score_data.pts_peer }} pts</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 flex-1 overflow-y-auto max-h-64">
+                {% if peer_evals %}
+                    <ul class="space-y-3">
+                        {% for eval in peer_evals %}
+                            <li class="bg-slate-50 p-3 rounded-lg border border-slate-100 flex justify-between items-center">
+                                <div>
+                                    <!-- Anonymous reviewer fix applied here -->
+                                    <p class="text-xs font-bold text-slate-500">From: Anonymous Teammate</p>
+                                    <p class="text-sm font-bold text-slate-800 mt-0.5">{{ eval.criterion.name }}</p>
+                                </div>
+                                <div class="bg-white border border-slate-200 px-3 py-1 rounded-md text-sm font-black text-purple-600 shadow-sm">
+                                    {{ eval.score }}/5
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center text-slate-400 italic text-sm mt-4">No peer evaluations received yet.</div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
