@@ -330,6 +330,121 @@ def analyze_team_contributions(team, commits_data):
     return summary
 
 
+def detect_anomalies(
+    flags=None,
+    final_score=0.0,
+    active_weight_sum=0.0,
+    gh_active=False,
+    commit_count=0,
+    deliv_active=False,
+    s_deliv_count=0,
+    peer_active=False,
+    gh_score=None,
+    deliv_score=None,
+    peer_score=None,
+    w_gh=0.0,
+    w_deliv=0.0,
+    **kwargs
+):
+    """
+    Evaluates individual contribution metrics against Cross-Pillar & GitHub anomaly rules:
+      - Rule A: Promote existing GitHub commit pattern flags (fluff, bulk dump, burst, unusual).
+      - Rule B: Free-Riding / Low Overall Participation (< 35% or 0 work output).
+      - Rule C: Peer Evaluation vs. Objective Output Mismatch (>= 35% gap).
+      - Rule D: Single-Pillar Siloing (Code-only or Docs-only with >= 80% and 0.0% in other).
+    """
+    flags = list(flags or [])
+    anomalies = []
+
+    # Rule A: Promote existing GitHub commit pattern flags with clear explanations
+    for gh_flag in flags:
+        if "trivial/fluff" in gh_flag:
+            anomalies.append({
+                'title': 'Trivial / Fluff Commit Pattern',
+                'category': 'GitHub Integrity',
+                'severity': 'warning',
+                'explanation': f"{gh_flag} Triggered when commits contain fewer than 3 line changes or messages under 5 characters, which may artificially inflate commit counts."
+            })
+        elif "massive code dumps" in gh_flag:
+            anomalies.append({
+                'title': 'Bulk Code Dump Detected',
+                'category': 'GitHub Integrity',
+                'severity': 'high',
+                'explanation': f"{gh_flag} Pushing over 1,000 lines in a single commit suggests bulk uploading or unreviewed code rather than iterative development."
+            })
+        elif "rapid-fire bursts" in gh_flag:
+            anomalies.append({
+                'title': 'Rapid-Fire Commit Burst',
+                'category': 'GitHub Integrity',
+                'severity': 'warning',
+                'explanation': f"{gh_flag} Multiple commits pushed within 2 minutes of each other often indicate fragmented edits or automated script pushes."
+            })
+        else:
+            anomalies.append({
+                'title': 'Unusual GitHub Activity',
+                'category': 'GitHub Integrity',
+                'severity': 'warning',
+                'explanation': gh_flag
+            })
+
+    # Rule B: Free-Riding / Low Overall Participation
+    if active_weight_sum > 0 and final_score < 35.0:
+        anomalies.append({
+            'title': 'Low Overall Contribution (Potential Free-Riding)',
+            'category': 'Participation',
+            'severity': 'high',
+            'explanation': f"Student's overall weighted score is {final_score}% (below the 35% threshold) while the team has active project evidence logged."
+        })
+    elif (gh_active and commit_count == 0) and (deliv_active and s_deliv_count == 0):
+        anomalies.append({
+            'title': 'Zero Recorded Work Output',
+            'category': 'Participation',
+            'severity': 'high',
+            'explanation': "Student has 0 mapped GitHub commits and 0 verified deliverables despite active team submissions in both pillars."
+        })
+
+    # Rule C: Peer Evaluation vs. Objective Output Mismatch
+    obj_scores = [s for s in [gh_score if gh_active else None, deliv_score if deliv_active else None] if s is not None]
+    if peer_active and obj_scores and peer_score is not None:
+        avg_obj_score = round(sum(obj_scores) / len(obj_scores), 1)
+        if peer_score - avg_obj_score >= 35.0:
+            anomalies.append({
+                'title': 'Peer Rating Inflation (High Peer vs. Low Output)',
+                'category': 'Cross-Pillar Mismatch',
+                'severity': 'warning',
+                'explanation': f"Student received a {peer_score}% peer evaluation score, which is {round(peer_score - avg_obj_score, 1)}% higher than their recorded objective average ({avg_obj_score}%)."
+            })
+        elif avg_obj_score - peer_score >= 35.0:
+            anomalies.append({
+                'title': 'Peer Rating Deficit (High Output vs. Low Peer Score)',
+                'category': 'Cross-Pillar Mismatch',
+                'severity': 'warning',
+                'explanation': f"Student achieved a {avg_obj_score}% objective output average across code/tasks, but teammates rated them significantly lower ({peer_score}%)."
+            })
+
+    # Rule D: Single-Pillar Siloing (Code-Only or Docs-Only)
+    if gh_active and deliv_active and w_gh > 0 and w_deliv > 0 and gh_score is not None and deliv_score is not None:
+        if gh_score == 0.0 and deliv_score >= 80.0:
+            anomalies.append({
+                'title': 'Non-Coding Silo (Zero Code Contribution)',
+                'category': 'Work Distribution',
+                'severity': 'warning',
+                'explanation': f"Student achieved {deliv_score}% in verified deliverables ({s_deliv_count} tasks) but contributed 0 commits to the team repository."
+            })
+        elif deliv_score == 0.0 and gh_score >= 80.0:
+            anomalies.append({
+                'title': 'Coding-Only Silo (Zero Non-Coding Tasks)',
+                'category': 'Work Distribution',
+                'severity': 'warning',
+                'explanation': f"Student achieved {gh_score}% in GitHub code impact ({commit_count} commits) but has 0 verified non-coding deliverable tasks."
+            })
+
+    return anomalies
+
+
+detect_student_anomalies = detect_anomalies
+
+
 def calculate_project_contribution_scores(project, force_refresh=False, target_team=None):
     """
     Retrieves and normalizes GitHub, Non-Coding Deliverable, and Peer Evaluation
@@ -500,13 +615,100 @@ def calculate_project_contribution_scores(project, force_refresh=False, target_t
                 # Calculate exact weighted points contributed to the 100-point total
                 pts_gh = round((gh_score * w_gh) / active_weight_sum, 1) if (gh_active and w_gh > 0) else 0.0
                 pts_deliv = round((deliv_score * w_deliv) / active_weight_sum, 1) if (
-                            deliv_active and w_deliv > 0) else 0.0
-                pts_peer = round((peer_score * w_peer) / active_weight_sum, 1) if (peer_active and w_peer > 0) else 0.0
+                        deliv_active and w_deliv > 0) else 0.0
+                pts_peer = round((peer_score * w_peer) / active_weight_sum, 1) if (
+                        peer_active and w_peer > 0) else 0.0
             else:
                 final_score = 0.0
                 is_redistributed = False
                 pts_gh = pts_deliv = pts_peer = 0.0
                 evidence_notes = ["Awaiting Evidence"]
+
+            # 5. Cross-Pillar & GitHub Anomaly Detection Engine
+            anomalies = []
+
+            # Rule A: Promote existing GitHub commit pattern flags with clear explanations
+            for gh_flag in flags:
+                if "trivial/fluff" in gh_flag:
+                    anomalies.append({
+                        'title': 'Trivial / Fluff Commit Pattern',
+                        'category': 'GitHub Integrity',
+                        'severity': 'warning',
+                        'explanation': f"{gh_flag} Triggered when commits contain fewer than 3 line changes or messages under 5 characters, which may artificially inflate commit counts."
+                    })
+                elif "massive code dumps" in gh_flag:
+                    anomalies.append({
+                        'title': 'Bulk Code Dump Detected',
+                        'category': 'GitHub Integrity',
+                        'severity': 'high',
+                        'explanation': f"{gh_flag} Pushing over 1,000 lines in a single commit suggests bulk uploading or unreviewed code rather than iterative development."
+                    })
+                elif "rapid-fire bursts" in gh_flag:
+                    anomalies.append({
+                        'title': 'Rapid-Fire Commit Burst',
+                        'category': 'GitHub Integrity',
+                        'severity': 'warning',
+                        'explanation': f"{gh_flag} Multiple commits pushed within 2 minutes of each other often indicate fragmented edits or automated script pushes."
+                    })
+                else:
+                    anomalies.append({
+                        'title': 'Unusual GitHub Activity',
+                        'category': 'GitHub Integrity',
+                        'severity': 'warning',
+                        'explanation': gh_flag
+                    })
+
+            # Rule B: Free-Riding / Low Overall Participation
+            if active_weight_sum > 0 and final_score < 35.0:
+                anomalies.append({
+                    'title': 'Low Overall Contribution (Potential Free-Riding)',
+                    'category': 'Participation',
+                    'severity': 'high',
+                    'explanation': f"Student's overall weighted score is {final_score}% (below the 35% threshold) while the team has active project evidence logged."
+                })
+            elif (gh_active and commit_count == 0) and (deliv_active and s_deliv_count == 0):
+                anomalies.append({
+                    'title': 'Zero Recorded Work Output',
+                    'category': 'Participation',
+                    'severity': 'high',
+                    'explanation': "Student has 0 mapped GitHub commits and 0 verified deliverables despite active team submissions in both pillars."
+                })
+
+            # Rule C: Peer Evaluation vs. Objective Output Mismatch
+            obj_scores = [s for s in [gh_score if gh_active else None, deliv_score if deliv_active else None] if s is not None]
+            if peer_active and obj_scores:
+                avg_obj_score = round(sum(obj_scores) / len(obj_scores), 1)
+                if peer_score - avg_obj_score >= 35.0:
+                    anomalies.append({
+                        'title': 'Peer Rating Inflation (High Peer vs. Low Output)',
+                        'category': 'Cross-Pillar Mismatch',
+                        'severity': 'warning',
+                        'explanation': f"Student received a {peer_score}% peer evaluation score, which is {round(peer_score - avg_obj_score, 1)}% higher than their recorded objective output average ({avg_obj_score}%)."
+                    })
+                elif avg_obj_score - peer_score >= 35.0:
+                    anomalies.append({
+                        'title': 'Peer Rating Deficit (High Output vs. Low Peer Score)',
+                        'category': 'Cross-Pillar Mismatch',
+                        'severity': 'warning',
+                        'explanation': f"Student achieved a {avg_obj_score}% objective output average across code/tasks, but teammates rated them significantly lower ({peer_score}%)."
+                    })
+
+            # Rule D: Single-Pillar Siloing (Code-Only or Docs-Only)
+            if gh_active and deliv_active and w_gh > 0 and w_deliv > 0:
+                if gh_score == 0.0 and deliv_score >= 80.0:
+                    anomalies.append({
+                        'title': 'Non-Coding Silo (Zero Code Contribution)',
+                        'category': 'Work Distribution',
+                        'severity': 'warning',
+                        'explanation': f"Student achieved {deliv_score}% in verified deliverables ({s_deliv_count} tasks) but contributed 0 commits to the team repository."
+                    })
+                elif deliv_score == 0.0 and gh_score >= 80.0:
+                    anomalies.append({
+                        'title': 'Coding-Only Silo (Zero Non-Coding Tasks)',
+                        'category': 'Work Distribution',
+                        'severity': 'warning',
+                        'explanation': f"Student achieved {gh_score}% in GitHub code impact ({commit_count} commits) but has 0 verified non-coding deliverable tasks."
+                    })
 
             master_data.append({
                 'student_id': s_id,
@@ -529,8 +731,8 @@ def calculate_project_contribution_scores(project, force_refresh=False, target_t
                 'is_redistributed': is_redistributed,
                 'evidence_notes': evidence_notes,
                 'flags': flags,
-
-                # Raw calculation variables for the UI Formula display
+                'anomalies': anomalies,
+                'anomaly_count': len(anomalies),
                 'gh_impact_score': round(impact_score, 2) if gh_active else 0,
                 'gh_expected_impact': round(expected_gh_impact, 2) if gh_active else 0,
                 'deliv_student_count': s_deliv_count,
@@ -539,6 +741,7 @@ def calculate_project_contribution_scores(project, force_refresh=False, target_t
                 'peer_max': round(p_max, 2),
             })
 
+    # Outside both the member loop and team loop
     master_data.sort(key=lambda x: (x['final_score'], x['commit_count']), reverse=True)
 
     return {
@@ -547,3 +750,4 @@ def calculate_project_contribution_scores(project, force_refresh=False, target_t
         'teams_with_repos': teams_with_repos,
         'project_total_commits': project_total_commits,
     }
+

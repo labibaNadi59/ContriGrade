@@ -337,10 +337,12 @@ def team_contribution_scores(request, team_id):
     )
     team_members_data = results['master_data']
 
-    # Calculate team average score
+    # Calculate team average score & total detected anomalies
     avg_score = 0.0
+    team_anomaly_count = 0
     if team_members_data:
         avg_score = round(sum(m['final_score'] for m in team_members_data) / len(team_members_data), 1)
+        team_anomaly_count = sum(len(m.get('anomalies', [])) for m in team_members_data)
 
     return render(request, 'academic/team_contribution_scores.html', {
         'team': team,
@@ -348,7 +350,9 @@ def team_contribution_scores(request, team_id):
         'members_data': team_members_data,
         'team_avg_score': avg_score,
         'team_total_commits': results['project_total_commits'],
+        'team_anomaly_count': team_anomaly_count,
     })
+
 
 @login_required
 def reports_hub(request):

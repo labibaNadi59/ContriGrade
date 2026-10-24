@@ -48,14 +48,14 @@
         <a href="{% url 'team_contribution_scores' team.pk %}" class="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-600 transition mb-3">
             <i class="fa-solid fa-arrow-left mr-2"></i> Back to Team Scores
         </a>
-        <h2 class="text-2xl font-extrabold text-slate-900">Contribution Evidence</h2>
+        <h2 class="text-2xl font-extrabold text-slate-900">Contribution Evidence & Anomaly Analysis</h2>
         <p class="text-sm text-slate-500 mt-1">
-            Analyzing evidence for <strong>{{ student.name }}</strong> in <strong>{{ team.team_name }}</strong>.
+            Analyzing evidence and contribution patterns for <strong>{{ student.name }}</strong> in <strong>{{ team.team_name }}</strong>.
         </p>
     </div>
 
     <!-- Final Score Formula Card -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-white to-slate-50">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-white to-slate-50">
         <div>
             <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Final Weighted Score</h3>
             <div class="flex items-center gap-3 font-bold text-slate-600 text-sm flex-wrap">
@@ -77,6 +77,57 @@
             <div class="text-xs font-bold text-slate-400 uppercase mt-1">Calculated Total</div>
         </div>
     </div>
+
+    <!-- Anomaly Detection & Pattern Explanations Section -->
+    {% if score_data.anomalies %}
+    <div class="bg-white rounded-2xl border border-amber-300 shadow-sm overflow-hidden mb-8">
+        <div class="bg-amber-50 border-b border-amber-200 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <i class="fa-solid fa-triangle-exclamation text-amber-600 text-lg"></i>
+                <div>
+                    <h3 class="text-sm font-extrabold text-amber-900">Detected Contribution Anomalies ({{ score_data.anomalies|length }})</h3>
+                    <p class="text-xs text-amber-700">Unusual contribution patterns flagged by the automated integrity rules.</p>
+                </div>
+            </div>
+            <span class="px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-xs font-bold">
+                Review Recommended
+            </span>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for anomaly in score_data.anomalies %}
+            <div class="p-4 rounded-xl border {% if anomaly.severity == 'high' %}bg-red-50/60 border-red-200{% else %}bg-amber-50/50 border-amber-200{% endif %} flex items-start gap-3">
+                <div class="mt-0.5">
+                    <i class="fa-solid {% if anomaly.severity == 'high' %}fa-circle-exclamation text-red-600{% else %}fa-flag text-amber-600{% endif %} text-base"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <span class="text-sm font-extrabold {% if anomaly.severity == 'high' %}text-red-900{% else %}text-amber-900{% endif %}">
+                            {{ anomaly.title }}
+                        </span>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded {% if anomaly.severity == 'high' %}bg-red-100 text-red-700{% else %}bg-amber-100 text-amber-800{% endif %}">
+                            {{ anomaly.category }}
+                        </span>
+                    </div>
+                    <p class="text-xs leading-relaxed {% if anomaly.severity == 'high' %}text-red-800{% else %}text-amber-800{% endif %}">
+                        {{ anomaly.explanation }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl px-6 py-4 mb-8 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-shield-check text-emerald-600 text-lg"></i>
+            <div>
+                <h3 class="text-sm font-bold text-emerald-900">No Unusual Contribution Patterns Detected</h3>
+                <p class="text-xs text-emerald-700">This student's commit frequency, deliverable tasks, and peer ratings align within normal thresholds.</p>
+            </div>
+        </div>
+        <span class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">Verified Clean</span>
+    </div>
+    {% endif %}
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
@@ -101,11 +152,11 @@
                         <span>Policy Weight:</span>
                         <span>× {{ project.weight_github }}%</span>
                     </div>
-                  {% if score_data.is_redistributed %}
-<div class="text-[9px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 mb-2 text-right">
-    <i class="fa-solid fa-scale-balanced mr-1"></i> Scaled up (missing category weight redistributed)
-</div>
-{% endif %}
+                    {% if score_data.is_redistributed %}
+                    <div class="text-[9px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 mb-2 text-right">
+                        <i class="fa-solid fa-scale-balanced mr-1"></i> Scaled up (missing category weight redistributed)
+                    </div>
+                    {% endif %}
                     <div class="flex justify-between border-t border-blue-200/60 pt-2 mt-1 items-center">
                         <span class="font-extrabold uppercase tracking-wider text-[10px] text-blue-500">Points Earned</span>
                         <span class="text-sm font-black text-blue-900">{{ score_data.pts_github }} pts</span>
@@ -217,7 +268,6 @@
                         {% for eval in peer_evals %}
                             <li class="bg-slate-50 p-3 rounded-lg border border-slate-100 flex justify-between items-center">
                                 <div>
-                                    <!-- Anonymous reviewer fix applied here -->
                                     <p class="text-xs font-bold text-slate-500">From: Anonymous Teammate</p>
                                     <p class="text-sm font-bold text-slate-800 mt-0.5">{{ eval.criterion.name }}</p>
                                 </div>
@@ -236,3 +286,5 @@
     </div>
 </div>
 {% endblock %}
+
+
