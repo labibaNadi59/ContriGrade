@@ -272,3 +272,33 @@ class Notification(models.Model):
     def __str__(self):
         return f"Notification for {self.recipient.name}: {self.message}"
 
+
+class FinalAssessment(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='final_assessments')
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='final_assessments')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='final_assessments')
+
+    recommended_score = models.FloatField(default=0.0, help_text="System-calculated contribution score snapshot")
+    adjusted_score = models.FloatField(null=True, blank=True, help_text="Instructor-adjusted final score (0-100)")
+    viva_observations = models.TextField(blank=True, help_text="Observations recorded during viva/defense")
+    adjustment_reason = models.CharField(max_length=255, blank=True,
+                                         help_text="Reason for adjusting the recommended score")
+
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='graded_assessments'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('project', 'student')
+
+    @property
+    def effective_final_score(self):
+        return self.adjusted_score if self.adjusted_score is not None else self.recommended_score
+
+    def __str__(self):
+        return f"{self.student.name} - {self.project.title} (Final: {self.effective_final_score}%)"
