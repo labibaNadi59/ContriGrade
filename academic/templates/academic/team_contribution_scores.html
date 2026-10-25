@@ -70,7 +70,7 @@
         </div>
     </div>
 
-    <!-- Policy & Team Summary Banner -->
+    <!-- Policy & Team Summary Banner (5 Columns including Detected Anomalies) -->
     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Team Members</p>
@@ -194,21 +194,40 @@
 
                 </div>
 
-                <!-- Right: Final Recommended Score -->
+                <!-- Right: Final Recommended / Adjusted Score -->
                 <div class="lg:w-1/4 flex flex-col items-start lg:items-end justify-center border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Recommended Score</span>
-                    <div class="text-3xl font-black {% if student.final_score >= 80 %}text-emerald-600{% elif student.final_score >= 50 %}text-indigo-600{% else %}text-red-600{% endif %}">
-                        {{ student.final_score }}%
-                    </div>
-
-                    {% if student.is_redistributed %}
-                        <span class="mt-1 inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded" title="Unavailable categories were dynamically redistributed across active weights.">
-                            <i class="fa-solid fa-scale-balanced mr-1"></i> Weights Adjusted
+                    {% if student.assessment and student.assessment.adjusted_score is not None %}
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mb-0.5 flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Final Adjusted Score
                         </span>
+                        <div class="text-3xl font-black text-indigo-600">
+                            {{ student.assessment.adjusted_score }}%
+                        </div>
+                        <span class="text-[11px] font-semibold text-slate-400 line-through">
+                            Recommended: {{ student.final_score }}%
+                        </span>
+                    {% else %}
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Recommended Score</span>
+                        <div class="text-3xl font-black {% if student.final_score >= 80 %}text-emerald-600{% elif student.final_score >= 50 %}text-indigo-600{% else %}text-red-600{% endif %}">
+                            {{ student.final_score }}%
+                        </div>
                     {% endif %}
 
-                    <a href="{% url 'student_evidence_detail' team.pk student.student_id %}" class="mt-4 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm w-full text-center flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-magnifying-glass-chart"></i> View Evidence
+                    <div class="flex flex-wrap gap-1.5 mt-1.5 lg:justify-end">
+                        {% if student.is_redistributed %}
+                            <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded" title="Unavailable categories were dynamically redistributed across active weights.">
+                                <i class="fa-solid fa-scale-balanced mr-1"></i> Weights Adjusted
+                            </span>
+                        {% endif %}
+                        {% if student.assessment and student.assessment.viva_observations %}
+                            <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded" title="Viva observations recorded">
+                                <i class="fa-solid fa-clipboard-check mr-1"></i> Viva Recorded
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <a href="{% url 'student_evidence_detail' team.pk student.student_id %}" class="mt-4 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm w-full text-center flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-clipboard-user"></i> Review & Viva
                     </a>
                 </div>
             </div>

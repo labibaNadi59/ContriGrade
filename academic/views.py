@@ -6,7 +6,8 @@ from django.utils import timezone
 
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution, \
-    EvaluationCriterion, PeerEvaluation, PeerEvaluationScore, PolicyChangeRequest, CourseAssessmentPolicy, Notification
+    EvaluationCriterion, PeerEvaluation, PeerEvaluationScore, PolicyChangeRequest, CourseAssessmentPolicy, Notification, \
+    FinalAssessment
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
     StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm, ProjectCreateForm
 from django.shortcuts import get_object_or_404
@@ -312,7 +313,7 @@ def project_master_report(request, project_id):
 
 @login_required
 def team_contribution_scores(request, team_id):
-    """Single Team View: Displays the 3-pillar score breakdown for one specific team."""
+    """Single Team View: Displays the 3-pillar score breakdown and finalized assessment status."""
     if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
         messages.error(request, "Access denied. Instructor privileges required.")
         return redirect('student_dashboard')
@@ -337,11 +338,26 @@ def team_contribution_scores(request, team_id):
     )
     team_members_data = results['master_data']
 
+    # Attach saved FinalAssessment / Viva records to each student dictionary
+    assessments_by_student = {
+        fa.student_id: fa
+        for fa in FinalAssessment.objects.filter(project=project, team=team)
+    }
+
+    for member in team_members_data:
+        assessment = assessments_by_student.get(member['student_id'])
+        member['assessment'] = assessment
+        member['effective_score'] = (
+            assessment.adjusted_score
+            if (assessment and assessment.adjusted_score is not None)
+            else member['final_score']
+        )
+
     # Calculate team average score & total detected anomalies
     avg_score = 0.0
     team_anomaly_count = 0
     if team_members_data:
-        avg_score = round(sum(m['final_score'] for m in team_members_data) / len(team_members_data), 1)
+        avg_score = round(sum(m['effective_score'] for m in team_members_data) / len(team_members_data), 1)
         team_anomaly_count = sum(len(m.get('anomalies', [])) for m in team_members_data)
 
     return render(request, 'academic/team_contribution_scores.html', {
@@ -352,6 +368,7 @@ def team_contribution_scores(request, team_id):
         'team_total_commits': results['project_total_commits'],
         'team_anomaly_count': team_anomaly_count,
     })
+
 
 
 @login_required
@@ -1171,37 +1188,78 @@ def read_notification(request, notif_id):
 
 @login_required
 def student_evidence_detail(request, team_id, student_id):
-    """Instructor view to drill down into the specific evidence calculating a student's final score."""
+    """Consolidated Instructor Workspace: Evidence, Peer Evals, Anomalies, Viva Observations & Score Adjustment."""
     if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
         messages.error(request, "Access denied.")
         return redirect('student_dashboard')
 
-    team = get_object_or_404(Team.objects.select_related('project'), pk=team_id)
-    project = team.project
+    if request.user.role in ['ADMIN', 'COORDINATOR']:
+        team = get_object_or_404(Team.objects.select_related('project'), pk=team_id)
+    else:
+        team = get_object_or_404(
+            Team.objects.select_related('project'),
+            pk=team_id,
+            project__section__instructor=request.user
+        )
 
-    # Assuming User PK is user_id
+    project = team.project
     target_student = get_object_or_404(User, user_id=student_id)
 
     # 1. Fetch calculated math from existing engine
     results = calculate_project_contribution_scores(project, force_refresh=False, target_team=team)
 
-    # 2. Isolate target student's scorecard data (USING 'student_id' key from utils.py)
+    # 2. Isolate target student's scorecard data
     student_data = next(
-        (member for member in results['master_data'] if member.get('student_id') == target_student.user_id), None)
+        (member for member in results['master_data'] if member.get('student_id') == target_student.user_id), None
+    )
 
     if not student_data:
         messages.error(request, "Student not found in this team's calculation.")
         return redirect('team_contribution_scores', team_id=team.pk)
 
-    # 3. Fetch Raw Evidence from Database
-    # Verified Deliverables
+    # 3. Handle POST: Save/Update Viva Observations & Score Adjustment
+    if request.method == 'POST':
+        viva_observations = request.POST.get('viva_observations', '').strip()
+        adjustment_reason = request.POST.get('adjustment_reason', '').strip()
+        raw_adjusted_score = request.POST.get('adjusted_score', '').strip()
+        reset_to_recommended = request.POST.get('action') == 'reset_score'
+
+        adjusted_val = None
+        if not reset_to_recommended and raw_adjusted_score != '':
+            try:
+                adjusted_val = round(float(raw_adjusted_score), 1)
+                if adjusted_val < 0.0 or adjusted_val > 100.0:
+                    messages.error(request, "Adjusted score must be between 0 and 100.")
+                    return redirect('student_evidence_detail', team_id=team.pk, student_id=target_student.user_id)
+            except ValueError:
+                messages.error(request, "Invalid score format entered.")
+                return redirect('student_evidence_detail', team_id=team.pk, student_id=target_student.user_id)
+
+        FinalAssessment.objects.update_or_create(
+            project=project,
+            student=target_student,
+            defaults={
+                'team': team,
+                'recommended_score': student_data['final_score'],
+                'adjusted_score': adjusted_val,
+                'viva_observations': viva_observations,
+                'adjustment_reason': '' if reset_to_recommended else adjustment_reason,
+                'updated_by': request.user,
+            }
+        )
+        messages.success(request, f"Assessment and viva observations updated for {target_student.name}.")
+        return redirect('student_evidence_detail', team_id=team.pk, student_id=target_student.user_id)
+
+    # 4. Fetch existing FinalAssessment record if available
+    assessment = FinalAssessment.objects.filter(project=project, student=target_student).select_related('updated_by').first()
+
+    # 5. Fetch Raw Evidence from Database
     verified_deliverables = DeliverableContribution.objects.filter(
         student=target_student,
         status='VERIFIED',
         deliverable__team=team
     ).select_related('deliverable')
 
-    # Peer Evaluations Received
     peer_evals_received = PeerEvaluationScore.objects.filter(
         evaluation__evaluatee=target_student,
         evaluation__team=team
@@ -1212,6 +1270,7 @@ def student_evidence_detail(request, team_id, student_id):
         'project': project,
         'student': target_student,
         'score_data': student_data,
+        'assessment': assessment,
         'deliverables': verified_deliverables,
         'peer_evals': peer_evals_received,
     })

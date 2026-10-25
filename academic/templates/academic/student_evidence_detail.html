@@ -1,6 +1,6 @@
 {% extends 'academic/base.html' %}
 
-{% block title %}Evidence: {{ student.name }} - ContriGrade{% endblock %}
+{% block title %}Assessment & Evidence: {{ student.name }} - ContriGrade{% endblock %}
 
 {% block sidebar_links %}
 <a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
@@ -34,7 +34,7 @@
         <span>Peer Scores</span>
     </a>
 
-    <a href="{% url 'team_contribution_scores' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_contribution_scores' %}bg-emerald-50 text-emerald-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <a href="{% url 'team_contribution_scores' team.pk %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_contribution_scores' or request.resolver_match.url_name == 'student_evidence_detail' %}bg-emerald-50 text-emerald-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
         <i class="fa-solid fa-ranking-star w-5"></i>
         <span>Contribution Scores</span>
     </a>
@@ -44,20 +44,25 @@
 {% block content %}
 <div class="max-w-5xl mx-auto">
     <!-- Header -->
-    <div class="mb-6">
-        <a href="{% url 'team_contribution_scores' team.pk %}" class="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-600 transition mb-3">
-            <i class="fa-solid fa-arrow-left mr-2"></i> Back to Team Scores
+    <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <a href="{% url 'team_contribution_scores' team.pk %}" class="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-600 transition mb-2">
+                <i class="fa-solid fa-arrow-left mr-2"></i> Back to Team Scores
+            </a>
+            <h2 class="text-2xl font-extrabold text-slate-900">Consolidated Assessment & Viva Review</h2>
+            <p class="text-sm text-slate-500 mt-1">
+                Student: <strong>{{ student.name }}</strong> &bull; Team: <strong>{{ team.team_name }}</strong> &bull; Project: <strong>{{ project.title }}</strong>
+            </p>
+        </div>
+        <a href="#viva-evaluation-panel" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm inline-flex items-center gap-2 self-start md:self-auto">
+            <i class="fa-solid fa-clipboard-check"></i> Record Viva & Final Score
         </a>
-        <h2 class="text-2xl font-extrabold text-slate-900">Contribution Evidence & Anomaly Analysis</h2>
-        <p class="text-sm text-slate-500 mt-1">
-            Analyzing evidence and contribution patterns for <strong>{{ student.name }}</strong> in <strong>{{ team.team_name }}</strong>.
-        </p>
     </div>
 
-    <!-- Final Score Formula Card -->
+    <!-- Final Score Formula Summary Card -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-white to-slate-50">
         <div>
-            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Final Weighted Score</h3>
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">System Weighted Score Breakdown</h3>
             <div class="flex items-center gap-3 font-bold text-slate-600 text-sm flex-wrap">
                 <span class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 shadow-sm">
                     GitHub: {{ score_data.pts_github }} pts
@@ -72,9 +77,23 @@
                 </span>
             </div>
         </div>
-        <div class="text-right border-l border-slate-200 pl-6">
-            <div class="text-4xl font-black text-emerald-600">{{ score_data.final_score }}%</div>
-            <div class="text-xs font-bold text-slate-400 uppercase mt-1">Calculated Total</div>
+
+        <div class="flex items-center gap-6 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
+            <div class="text-right">
+                <div class="text-2xl font-black {% if assessment and assessment.adjusted_score is not None %}text-slate-400 line-through{% else %}text-emerald-600 text-4xl{% endif %}">
+                    {{ score_data.final_score }}%
+                </div>
+                <div class="text-[11px] font-bold text-slate-400 uppercase mt-0.5">Recommended Score</div>
+            </div>
+
+            {% if assessment and assessment.adjusted_score is not None %}
+            <div class="text-right border-l border-slate-200 pl-6">
+                <div class="text-4xl font-black text-indigo-600">{{ assessment.adjusted_score }}%</div>
+                <div class="text-[11px] font-bold text-indigo-600 uppercase mt-0.5 flex items-center justify-end gap-1">
+                    <i class="fa-solid fa-pen-to-square"></i> Adjusted Final
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -90,7 +109,7 @@
                 </div>
             </div>
             <span class="px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-xs font-bold">
-                Review Recommended
+                Verify in Viva
             </span>
         </div>
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -129,22 +148,21 @@
     </div>
     {% endif %}
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- 3-Pillar Evidence Breakdown -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 
         <!-- 1. GitHub Evidence -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div class="bg-blue-50 border-b border-blue-100 p-4">
                 <h3 class="font-bold text-blue-900 flex items-center"><i class="fa-brands fa-github mr-2"></i> Code Contributions</h3>
 
-                <!-- Explicit Math Breakdown -->
                 <div class="mt-3 bg-white/80 p-3 rounded-lg border border-blue-100 text-xs text-blue-800 shadow-sm">
                     <div class="flex justify-between items-center mb-1.5">
                         <span class="font-bold text-blue-900">Component Score:</span>
                         <span class="text-sm font-black">{{ score_data.github_score|default:"0.0" }}%</span>
                     </div>
 
-                    <!-- Live Formula Injection -->
-                    <div class="mb-2.5 text-[10px] font-mono bg-blue-50/70 p-1.5 rounded-md border border-blue-200/50 text-blue-600 text-right shadow-inner" title="Formula: (Student Impact ÷ Team Average Impact) × 80">
+                    <div class="mb-2.5 text-[10px] font-mono bg-blue-50/70 p-1.5 rounded-md border border-blue-200/50 text-blue-600 text-right shadow-inner">
                         ({{ score_data.gh_impact_score|default:"0" }} impact ÷ {{ score_data.gh_expected_impact|default:"0" }} avg) × 80
                     </div>
 
@@ -194,15 +212,13 @@
             <div class="bg-indigo-50 border-b border-indigo-100 p-4">
                 <h3 class="font-bold text-indigo-900 flex items-center"><i class="fa-solid fa-file-signature mr-2"></i> Verified Tasks</h3>
 
-                <!-- Explicit Math Breakdown -->
                 <div class="mt-3 bg-white/80 p-3 rounded-lg border border-indigo-100 text-xs text-indigo-800 shadow-sm">
                     <div class="flex justify-between items-center mb-1.5">
                         <span class="font-bold text-indigo-900">Component Score:</span>
                         <span class="text-sm font-black">{{ score_data.deliverables_score|default:"0.0" }}%</span>
                     </div>
 
-                    <!-- Live Formula Injection -->
-                    <div class="mb-2.5 text-[10px] font-mono bg-indigo-50/70 p-1.5 rounded-md border border-indigo-200/50 text-indigo-600 text-right shadow-inner" title="Formula: (Student Tasks ÷ Expected Team Average) × 80">
+                    <div class="mb-2.5 text-[10px] font-mono bg-indigo-50/70 p-1.5 rounded-md border border-indigo-200/50 text-indigo-600 text-right shadow-inner">
                         ({{ score_data.deliv_student_count|default:"0" }} tasks ÷ {{ score_data.deliv_expected_count|default:"0" }} avg) × 80
                     </div>
 
@@ -240,15 +256,13 @@
             <div class="bg-purple-50 border-b border-purple-100 p-4">
                 <h3 class="font-bold text-purple-900 flex items-center"><i class="fa-solid fa-users mr-2"></i> Peer Ratings</h3>
 
-                <!-- Explicit Math Breakdown -->
                 <div class="mt-3 bg-white/80 p-3 rounded-lg border border-purple-100 text-xs text-purple-800 shadow-sm">
                     <div class="flex justify-between items-center mb-1.5">
                         <span class="font-bold text-purple-900">Component Score:</span>
                         <span class="text-sm font-black">{{ score_data.peer_score|default:"0.0" }}%</span>
                     </div>
 
-                    <!-- Live Formula Injection -->
-                    <div class="mb-2.5 text-[10px] font-mono bg-purple-50/70 p-1.5 rounded-md border border-purple-200/50 text-purple-600 text-right shadow-inner" title="Formula: (Points Earned ÷ Max Possible Points) × 100">
+                    <div class="mb-2.5 text-[10px] font-mono bg-purple-50/70 p-1.5 rounded-md border border-purple-200/50 text-purple-600 text-right shadow-inner">
                         ({{ score_data.peer_earned|default:"0" }} pts ÷ {{ score_data.peer_max|default:"0" }} max) × 100
                     </div>
 
@@ -284,7 +298,101 @@
         </div>
 
     </div>
+
+    <!-- Consolidated Viva Observations & Score Recommendation Adjustment Form -->
+    <div id="viva-evaluation-panel" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-10">
+        <div class="bg-slate-900 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-clipboard-user text-emerald-400 text-lg"></i>
+                <div>
+                    <h3 class="text-base font-extrabold">Final Assessment Review & Viva Observations</h3>
+                    <p class="text-xs text-slate-300">Record defense performance observations and adjust the final contribution score if warranted.</p>
+                </div>
+            </div>
+            {% if assessment and assessment.updated_at %}
+                <span class="text-[11px] font-semibold bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">
+                    Last saved {{ assessment.updated_at|date:"M d, Y H:i" }}{% if assessment.updated_by %} by {{ assessment.updated_by.name }}{% endif %}
+                </span>
+            {% endif %}
+        </div>
+
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left 2 Columns: Viva Observations Textarea -->
+                <div class="lg:col-span-2">
+                    <label for="viva_observations" class="block text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-2">
+                        Viva / Defense Observations
+                    </label>
+                    <textarea
+                        id="viva_observations"
+                        name="viva_observations"
+                        rows="5"
+                        placeholder="Record observations from the student's viva defense (e.g., ability to explain committed code, architectural understanding, responses to anomaly flags)..."
+                        class="w-full rounded-xl border border-slate-300 bg-slate-50/50 p-3.5 text-sm text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition"
+                    >{{ assessment.viva_observations|default:"" }}</textarea>
+                    <p class="text-[11px] text-slate-400 mt-1.5">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Tied to <strong>{{ student.name }}</strong> for project <strong>{{ project.title }}</strong>.
+                    </p>
+                </div>
+
+                <!-- Right Column: Score Adjustment Box -->
+                <div class="bg-slate-50 rounded-xl border border-slate-200 p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                            <span class="text-xs font-bold text-slate-500 uppercase">System Recommended</span>
+                            <span class="text-lg font-black text-emerald-600">{{ score_data.final_score }}%</span>
+                        </div>
+
+                        <label for="adjusted_score" class="block text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
+                            Adjusted Final Score (%)
+                        </label>
+                        <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            id="adjusted_score"
+                            name="adjusted_score"
+                            value="{% if assessment and assessment.adjusted_score is not None %}{{ assessment.adjusted_score }}{% endif %}"
+                            placeholder="{{ score_data.final_score }} (Leave blank to keep)"
+                            class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-900 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none transition mb-3"
+                        >
+
+                        <label for="adjustment_reason" class="block text-xs font-bold text-slate-600 mb-1">
+                            Adjustment Reason <span class="text-slate-400 font-normal">(Optional)</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="adjustment_reason"
+                            name="adjustment_reason"
+                            value="{{ assessment.adjustment_reason|default:'' }}"
+                            placeholder="e.g., Exceptional defense / Unable to explain PR"
+                            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 focus:border-indigo-600 outline-none transition"
+                        >
+                    </div>
+
+                    {% if assessment and assessment.adjusted_score is not None %}
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-end">
+                        <button type="submit" name="action" value="reset_score" class="text-xs font-bold text-red-600 hover:text-red-700 transition flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i> Revert to Recommended ({{ score_data.final_score }}%)
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <a href="{% url 'team_contribution_scores' team.pk %}" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition">
+                    Cancel
+                </a>
+                <button type="submit" name="action" value="save_assessment" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Viva & Assessment
+                </button>
+            </div>
+        </form>
+    </div>
+
 </div>
 {% endblock %}
-
-
