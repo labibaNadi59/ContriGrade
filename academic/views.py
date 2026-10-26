@@ -313,7 +313,7 @@ def project_master_report(request, project_id):
 
 @login_required
 def team_contribution_scores(request, team_id):
-    """Single Team View: Displays the 3-pillar score breakdown and finalized assessment status."""
+    """Single Team View: Displays 3-pillar scores, anomalies, viva status, and bulk score approval."""
     if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
         messages.error(request, "Access denied. Instructor privileges required.")
         return redirect('student_dashboard')
@@ -330,7 +330,6 @@ def team_contribution_scores(request, team_id):
     project = team.project
     force_refresh = request.GET.get('refresh') == 'true'
 
-    # Calculate scores strictly for this single team
     results = calculate_project_contribution_scores(
         project,
         force_refresh=force_refresh,
@@ -338,22 +337,71 @@ def team_contribution_scores(request, team_id):
     )
     team_members_data = results['master_data']
 
-    # Attach saved FinalAssessment / Viva records to each student dictionary
+    # Handle Bulk Team Score Approval / Unapproval via POST
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve_all_team':
+            now = timezone.now()
+            for member in team_members_data:
+                student_obj = get_object_or_404(User, user_id=member['student_id'])
+                fa, _ = FinalAssessment.objects.get_or_create(
+                    project=project,
+                    student=student_obj,
+                    defaults={
+                        'team': team,
+                        'recommended_score': member['final_score'],
+                        'updated_by': request.user,
+                    }
+                )
+                fa.team = team
+                fa.recommended_score = member['final_score']
+                fa.is_approved = True
+                fa.approved_by = request.user
+                fa.approved_at = now
+                fa.save()
+            messages.success(request, f"All final scores for {team.team_name} have been officially approved.")
+            return redirect('team_contribution_scores', team_id=team.pk)
+
+        elif action == 'approve_single':
+            s_id = request.POST.get('student_id')
+            member = next((m for m in team_members_data if str(m['student_id']) == str(s_id)), None)
+            if member:
+                student_obj = get_object_or_404(User, user_id=member['student_id'])
+                fa, _ = FinalAssessment.objects.get_or_create(
+                    project=project,
+                    student=student_obj,
+                    defaults={'team': team, 'recommended_score': member['final_score']}
+                )
+                fa.team = team
+                fa.recommended_score = member['final_score']
+                fa.is_approved = not fa.is_approved
+                fa.approved_by = request.user if fa.is_approved else None
+                fa.approved_at = timezone.now() if fa.is_approved else None
+                fa.updated_by = request.user
+                fa.save()
+                status_str = "approved" if fa.is_approved else "unlocked for editing"
+                messages.success(request, f"Final score for {student_obj.name} {status_str}.")
+            return redirect('team_contribution_scores', team_id=team.pk)
+
+    # Attach saved FinalAssessment / Approval records to each student dictionary
     assessments_by_student = {
         fa.student_id: fa
-        for fa in FinalAssessment.objects.filter(project=project, team=team)
+        for fa in FinalAssessment.objects.filter(project=project, team=team).select_related('approved_by')
     }
 
+    approved_count = 0
     for member in team_members_data:
         assessment = assessments_by_student.get(member['student_id'])
         member['assessment'] = assessment
+        member['is_approved'] = bool(assessment and assessment.is_approved)
+        if member['is_approved']:
+            approved_count += 1
         member['effective_score'] = (
             assessment.adjusted_score
             if (assessment and assessment.adjusted_score is not None)
             else member['final_score']
         )
 
-    # Calculate team average score & total detected anomalies
     avg_score = 0.0
     team_anomaly_count = 0
     if team_members_data:
@@ -367,9 +415,9 @@ def team_contribution_scores(request, team_id):
         'team_avg_score': avg_score,
         'team_total_commits': results['project_total_commits'],
         'team_anomaly_count': team_anomaly_count,
+        'approved_count': approved_count,
+        'all_approved': len(team_members_data) > 0 and approved_count == len(team_members_data),
     })
-
-
 
 @login_required
 def reports_hub(request):
@@ -1188,7 +1236,7 @@ def read_notification(request, notif_id):
 
 @login_required
 def student_evidence_detail(request, team_id, student_id):
-    """Consolidated Instructor Workspace: Evidence, Peer Evals, Anomalies, Viva Observations & Score Adjustment."""
+    """Consolidated Instructor Workspace: Evidence, Peer Evals, Anomalies, Viva, Score Adjustment & Approval."""
     if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
         messages.error(request, "Access denied.")
         return redirect('student_dashboard')
@@ -1205,10 +1253,7 @@ def student_evidence_detail(request, team_id, student_id):
     project = team.project
     target_student = get_object_or_404(User, user_id=student_id)
 
-    # 1. Fetch calculated math from existing engine
     results = calculate_project_contribution_scores(project, force_refresh=False, target_team=team)
-
-    # 2. Isolate target student's scorecard data
     student_data = next(
         (member for member in results['master_data'] if member.get('student_id') == target_student.user_id), None
     )
@@ -1217,12 +1262,14 @@ def student_evidence_detail(request, team_id, student_id):
         messages.error(request, "Student not found in this team's calculation.")
         return redirect('team_contribution_scores', team_id=team.pk)
 
-    # 3. Handle POST: Save/Update Viva Observations & Score Adjustment
+    existing_assessment = FinalAssessment.objects.filter(project=project, student=target_student).first()
+
     if request.method == 'POST':
+        action = request.POST.get('action')
         viva_observations = request.POST.get('viva_observations', '').strip()
         adjustment_reason = request.POST.get('adjustment_reason', '').strip()
         raw_adjusted_score = request.POST.get('adjusted_score', '').strip()
-        reset_to_recommended = request.POST.get('action') == 'reset_score'
+        reset_to_recommended = (action == 'reset_score')
 
         adjusted_val = None
         if not reset_to_recommended and raw_adjusted_score != '':
@@ -1235,6 +1282,26 @@ def student_evidence_detail(request, team_id, student_id):
                 messages.error(request, "Invalid score format entered.")
                 return redirect('student_evidence_detail', team_id=team.pk, student_id=target_student.user_id)
 
+        # Determine approval status
+        if action == 'save_and_approve':
+            is_approved = True
+            approved_by = request.user
+            approved_at = timezone.now()
+        elif action == 'unapprove_score':
+            is_approved = False
+            approved_by = None
+            approved_at = None
+        else:
+            is_approved = bool(request.POST.get('is_approved') == 'on') or (
+                existing_assessment.is_approved if existing_assessment else False
+            )
+            approved_by = request.user if is_approved else None
+            approved_at = (
+                existing_assessment.approved_at
+                if (existing_assessment and existing_assessment.approved_at and is_approved)
+                else (timezone.now() if is_approved else None)
+            )
+
         FinalAssessment.objects.update_or_create(
             project=project,
             student=target_student,
@@ -1244,16 +1311,26 @@ def student_evidence_detail(request, team_id, student_id):
                 'adjusted_score': adjusted_val,
                 'viva_observations': viva_observations,
                 'adjustment_reason': '' if reset_to_recommended else adjustment_reason,
+                'is_approved': is_approved,
+                'approved_by': approved_by,
+                'approved_at': approved_at,
                 'updated_by': request.user,
             }
         )
-        messages.success(request, f"Assessment and viva observations updated for {target_student.name}.")
+
+        if action == 'save_and_approve':
+            messages.success(request, f"Final score and viva assessment approved for {target_student.name}.")
+        elif action == 'unapprove_score':
+            messages.info(request, f"Approval unlocked for {target_student.name}.")
+        else:
+            messages.success(request, f"Assessment and viva observations updated for {target_student.name}.")
+
         return redirect('student_evidence_detail', team_id=team.pk, student_id=target_student.user_id)
 
-    # 4. Fetch existing FinalAssessment record if available
-    assessment = FinalAssessment.objects.filter(project=project, student=target_student).select_related('updated_by').first()
+    assessment = FinalAssessment.objects.filter(
+        project=project, student=target_student
+    ).select_related('updated_by', 'approved_by').first()
 
-    # 5. Fetch Raw Evidence from Database
     verified_deliverables = DeliverableContribution.objects.filter(
         student=target_student,
         status='VERIFIED',
@@ -1273,4 +1350,163 @@ def student_evidence_detail(request, team_id, student_id):
         'assessment': assessment,
         'deliverables': verified_deliverables,
         'peer_evals': peer_evals_received,
+    })
+
+
+@login_required
+def team_assessment_report(request, team_id):
+    """Generates an official, access-controlled Final Assessment Report (Print/PDF & CSV) for a single team."""
+    if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
+        messages.error(request, "Access denied. Only authorized faculty can access assessment reports.")
+        return redirect('student_dashboard')
+
+    if request.user.role in ['ADMIN', 'COORDINATOR']:
+        team = get_object_or_404(Team.objects.select_related('project', 'project__section'), pk=team_id)
+    else:
+        team = get_object_or_404(
+            Team.objects.select_related('project', 'project__section'),
+            pk=team_id,
+            project__section__instructor=request.user
+        )
+
+    project = team.project
+    results = calculate_project_contribution_scores(project, force_refresh=False, target_team=team)
+    members_data = results['master_data']
+
+    assessments_by_student = {
+        fa.student_id: fa
+        for fa in FinalAssessment.objects.filter(project=project, team=team).select_related('approved_by', 'updated_by')
+    }
+
+    approved_count = 0
+    for m in members_data:
+        fa = assessments_by_student.get(m['student_id'])
+        m['assessment'] = fa
+        m['is_approved'] = bool(fa and fa.is_approved)
+        if m['is_approved']:
+            approved_count += 1
+        m['effective_score'] = fa.adjusted_score if (fa and fa.adjusted_score is not None) else m['final_score']
+
+    # CSV Export Handler
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        filename = f"Assessment_Report_{team.team_name.replace(' ', '_')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        writer = csv.writer(response)
+        writer.writerow([
+            'Student Name', 'Role', 'GitHub Username',
+            f'GitHub Score ({project.weight_github}%)',
+            f'Deliverables Score ({project.weight_deliverables}%)',
+            f'Peer Score ({project.weight_peer}%)',
+            'Recommended Score (%)', 'Adjusted Score (%)', 'Final Official Score (%)',
+            'Approval Status', 'Approved By', 'Anomalies Flagged', 'Viva Observations', 'Adjustment Reason'
+        ])
+        for m in members_data:
+            fa = m['assessment']
+            writer.writerow([
+                m['name'],
+                m.get('role') or 'Member',
+                m.get('github_username') or 'Unlinked',
+                m['github_score'] if m['github_score'] is not None else 'N/A',
+                m['deliverables_score'] if m['deliverables_score'] is not None else 'N/A',
+                m['peer_score'] if m['peer_score'] is not None else 'N/A',
+                m['final_score'],
+                fa.adjusted_score if (fa and fa.adjusted_score is not None) else '-',
+                m['effective_score'],
+                'Approved' if m['is_approved'] else 'Pending Approval',
+                fa.approved_by.name if (fa and fa.approved_by) else '-',
+                len(m.get('anomalies', [])),
+                fa.viva_observations if fa else '',
+                fa.adjustment_reason if fa else '',
+            ])
+        return response
+
+    avg_score = round(sum(m['effective_score'] for m in members_data) / len(members_data), 1) if members_data else 0.0
+
+    return render(request, 'academic/assessment_report.html', {
+        'project': project,
+        'team': team,
+        'members_data': members_data,
+        'avg_score': avg_score,
+        'approved_count': approved_count,
+        'total_members': len(members_data),
+        'generated_at': timezone.now(),
+        'is_project_wide': False,
+    })
+
+@login_required
+def project_assessment_report(request, project_id):
+    """Generates a class-wide Final Assessment & Approval Report across all teams in a project."""
+    if request.user.role not in ['INSTRUCTOR', 'ADMIN', 'COORDINATOR']:
+        messages.error(request, "Access denied. Only authorized faculty can access assessment reports.")
+        return redirect('student_dashboard')
+
+    if request.user.role in ['ADMIN', 'COORDINATOR']:
+        project = get_object_or_404(Project.objects.select_related('section'), pk=project_id)
+    else:
+        project = get_object_or_404(
+            Project.objects.select_related('section'),
+            pk=project_id,
+            section__instructor=request.user
+        )
+
+    results = calculate_project_contribution_scores(project, force_refresh=False)
+    members_data = results['master_data']
+
+    assessments_by_student = {
+        fa.student_id: fa
+        for fa in FinalAssessment.objects.filter(project=project).select_related('approved_by', 'updated_by')
+    }
+
+    approved_count = 0
+    for m in members_data:
+        fa = assessments_by_student.get(m['student_id'])
+        m['assessment'] = fa
+        m['is_approved'] = bool(fa and fa.is_approved)
+        if m['is_approved']:
+            approved_count += 1
+        m['effective_score'] = fa.adjusted_score if (fa and fa.adjusted_score is not None) else m['final_score']
+
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        filename = f"Project_Assessment_Report_{project.title.replace(' ', '_')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        writer = csv.writer(response)
+        writer.writerow([
+            'Team', 'Student Name', 'Role', 'GitHub Username',
+            'GitHub Score (%)', 'Deliverables Score (%)', 'Peer Score (%)',
+            'Recommended Score (%)', 'Adjusted Score (%)', 'Final Official Score (%)',
+            'Approval Status', 'Approved By', 'Anomalies Flagged', 'Viva Observations'
+        ])
+        for m in members_data:
+            fa = m['assessment']
+            writer.writerow([
+                m['team_name'],
+                m['name'],
+                m.get('role') or 'Member',
+                m.get('github_username') or 'Unlinked',
+                m['github_score'] if m['github_score'] is not None else 'N/A',
+                m['deliverables_score'] if m['deliverables_score'] is not None else 'N/A',
+                m['peer_score'] if m['peer_score'] is not None else 'N/A',
+                m['final_score'],
+                fa.adjusted_score if (fa and fa.adjusted_score is not None) else '-',
+                m['effective_score'],
+                'Approved' if m['is_approved'] else 'Pending Approval',
+                fa.approved_by.name if (fa and fa.approved_by) else '-',
+                len(m.get('anomalies', [])),
+                fa.viva_observations if fa else '',
+            ])
+        return response
+
+    avg_score = round(sum(m['effective_score'] for m in members_data) / len(members_data), 1) if members_data else 0.0
+
+    return render(request, 'academic/assessment_report.html', {
+        'project': project,
+        'team': None,
+        'members_data': members_data,
+        'avg_score': avg_score,
+        'approved_count': approved_count,
+        'total_members': len(members_data),
+        'generated_at': timezone.now(),
+        'is_project_wide': True,
     })
