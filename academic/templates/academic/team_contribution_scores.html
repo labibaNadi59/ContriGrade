@@ -58,13 +58,27 @@
             </p>
         </div>
 
-        <div class="flex items-center space-x-3">
-            <a href="?refresh=true" class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-100 transition shadow-sm flex items-center">
-                <i class="fa-solid fa-arrows-rotate mr-2"></i> Recalculate
+        <div class="flex items-center flex-wrap gap-2.5">
+            <a href="?refresh=true" class="bg-blue-50 border border-blue-200 text-blue-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-blue-100 transition shadow-sm flex items-center">
+                <i class="fa-solid fa-arrows-rotate mr-1.5"></i> Recalculate
             </a>
+
+            <form method="post" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approve_all_team">
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm flex items-center">
+                    <i class="fa-solid fa-check-double mr-1.5"></i>
+                    {% if all_approved %}Re-Approve All ({{ approved_count }}/{{ members_data|length }}){% else %}Approve All Scores ({{ approved_count }}/{{ members_data|length }}){% endif %}
+                </button>
+            </form>
+
+            <a href="{% url 'team_assessment_report' team.pk %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm flex items-center">
+                <i class="fa-solid fa-file-contract mr-1.5"></i> Assessment Report
+            </a>
+
             {% if team.github_repo_url %}
-                <a href="{{ team.github_repo_url }}" target="_blank" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-800 transition shadow-sm flex items-center">
-                    <i class="fa-brands fa-github mr-2"></i> View Repository
+                <a href="{{ team.github_repo_url }}" target="_blank" class="bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm flex items-center">
+                    <i class="fa-brands fa-github mr-1.5"></i> Repo
                 </a>
             {% endif %}
         </div>
@@ -194,12 +208,21 @@
 
                 </div>
 
-                <!-- Right: Final Recommended / Adjusted Score -->
+                <!-- Right: Final Recommended / Adjusted Score & Approval -->
                 <div class="lg:w-1/4 flex flex-col items-start lg:items-end justify-center border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6">
+                    <div class="mb-1">
+                        {% if student.is_approved %}
+                            <span class="inline-flex items-center text-[10px] font-extrabold px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full">
+                                <i class="fa-solid fa-lock mr-1"></i> Approved Final Score
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full">
+                                <i class="fa-regular fa-clock mr-1"></i> Pending Approval
+                            </span>
+                        {% endif %}
+                    </div>
+
                     {% if student.assessment and student.assessment.adjusted_score is not None %}
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mb-0.5 flex items-center gap-1">
-                            <i class="fa-solid fa-pen-to-square"></i> Final Adjusted Score
-                        </span>
                         <div class="text-3xl font-black text-indigo-600">
                             {{ student.assessment.adjusted_score }}%
                         </div>
@@ -207,7 +230,6 @@
                             Recommended: {{ student.final_score }}%
                         </span>
                     {% else %}
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Recommended Score</span>
                         <div class="text-3xl font-black {% if student.final_score >= 80 %}text-emerald-600{% elif student.final_score >= 50 %}text-indigo-600{% else %}text-red-600{% endif %}">
                             {{ student.final_score }}%
                         </div>
@@ -215,20 +237,30 @@
 
                     <div class="flex flex-wrap gap-1.5 mt-1.5 lg:justify-end">
                         {% if student.is_redistributed %}
-                            <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded" title="Unavailable categories were dynamically redistributed across active weights.">
+                            <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">
                                 <i class="fa-solid fa-scale-balanced mr-1"></i> Weights Adjusted
                             </span>
                         {% endif %}
                         {% if student.assessment and student.assessment.viva_observations %}
-                            <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded" title="Viva observations recorded">
+                            <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">
                                 <i class="fa-solid fa-clipboard-check mr-1"></i> Viva Recorded
                             </span>
                         {% endif %}
                     </div>
 
-                    <a href="{% url 'student_evidence_detail' team.pk student.student_id %}" class="mt-4 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm w-full text-center flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-clipboard-user"></i> Review & Viva
-                    </a>
+                    <div class="mt-4 flex items-center gap-2 w-full">
+                        <a href="{% url 'student_evidence_detail' team.pk student.student_id %}" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-bold transition shadow-sm text-center flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-clipboard-user"></i> Review & Viva
+                        </a>
+                        <form method="post" class="inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve_single">
+                            <input type="hidden" name="student_id" value="{{ student.student_id }}">
+                            <button type="submit" title="{% if student.is_approved %}Unlock Approval{% else %}Approve Final Score{% endif %}" class="px-3 py-2 rounded-lg text-xs font-bold border transition shadow-sm {% if student.is_approved %}bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100{% else %}bg-white border-slate-300 text-slate-700 hover:bg-slate-50{% endif %}">
+                                <i class="fa-solid {% if student.is_approved %}fa-check-circle{% else %}fa-check{% endif %}"></i>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -277,4 +309,3 @@
 
 </div>
 {% endblock %}
-

@@ -86,14 +86,22 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <ul class="divide-y divide-gray-100">
             {% for project in projects %}
-                <li class="p-5 hover:bg-gray-50 transition flex items-center justify-between">
+                <li class="p-5 hover:bg-gray-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h3 class="font-bold text-lg text-blue-600">{{ project.title }}</h3>
                         <p class="text-sm text-gray-500 mt-1"><i class="fa-solid fa-users mr-1"></i> {{ project.teams.count }} Teams Registered</p>
                     </div>
-                    <a href="{% url 'project_master_report' project.pk %}" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm flex items-center">
-                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Generate Report
-                    </a>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <a href="{% url 'project_assessment_report' project.pk %}" class="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-emerald-700 transition shadow-sm flex items-center">
+                            <i class="fa-solid fa-file-contract mr-2"></i> Final Assessment Report
+                        </a>
+                        <a href="{% url 'project_assessment_report' project.pk %}?export=csv" class="bg-slate-100 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-lg text-xs font-bold hover:bg-slate-200 transition shadow-sm flex items-center">
+                            <i class="fa-solid fa-file-csv mr-1.5 text-emerald-600"></i> CSV
+                        </a>
+                        <a href="{% url 'project_master_report' project.pk %}" class="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-sm flex items-center">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Analytics Report
+                        </a>
+                    </div>
                 </li>
             {% empty %}
                 <li class="p-8 text-center text-gray-500">No projects available for reporting.</li>

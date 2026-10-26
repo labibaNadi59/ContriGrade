@@ -53,4 +53,8 @@ path('notifications/<int:notif_id>/read/', views.read_notification, name='read_n
 path('instructor/team/<int:team_id>/scores/', views.team_contribution_scores, name='team_contribution_scores'),
 
 path('team/<int:team_id>/student/<int:student_id>/evidence/', views.student_evidence_detail, name='student_evidence_detail'),
+
+path('instructor/team/<int:team_id>/assessment-report/', views.team_assessment_report, name='team_assessment_report'),
+path('instructor/project/<int:project_id>/assessment-report/', views.project_assessment_report, name='project_assessment_report'),
+
 ]

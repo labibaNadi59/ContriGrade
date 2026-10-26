@@ -284,6 +284,17 @@ class FinalAssessment(models.Model):
     adjustment_reason = models.CharField(max_length=255, blank=True,
                                          help_text="Reason for adjusting the recommended score")
 
+    # NEW: Final Score Approval Tracking
+    is_approved = models.BooleanField(default=False, help_text="Whether the final score has been officially approved")
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_assessments'
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -301,4 +312,6 @@ class FinalAssessment(models.Model):
         return self.adjusted_score if self.adjusted_score is not None else self.recommended_score
 
     def __str__(self):
-        return f"{self.student.name} - {self.project.title} (Final: {self.effective_final_score}%)"
+        status = "Approved" if self.is_approved else "Draft"
+        return f"{self.student.name} - {self.project.title} ({self.effective_final_score}% - {status})"
+
