@@ -6,18 +6,25 @@
 
     <!-- If the user is an INSTRUCTOR -->
     {% if user.role == 'INSTRUCTOR' %}
-        <a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
-            <i class="fa-solid fa-book-open w-5"></i>
-            <span>Projects</span>
-        </a>
-        <a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
-            <i class="fa-solid fa-users w-5"></i>
-            <span>Teams</span>
-        </a>
-        <a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold">
-            <i class="fa-solid fa-chart-line w-5"></i>
-            <span>Reports</span>
-        </a>
+        <a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'dashboard_redirect' %}bg-blue-50 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Projects</span>
+</a>
+
+<a href="{% url 'instructor_sections' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'instructor_sections' %}bg-blue-50 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-chalkboard-user w-5"></i>
+    <span>Course Sections</span>
+</a>
+
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_management' %}bg-blue-700 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-users w-5"></i>
+    <span>Teams</span>
+</a>
+
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'reports_hub' %}bg-blue-50 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-chart-line w-5"></i>
+    <span>Reports</span>
+</a>
 
     <!-- If the user is a COORDINATOR -->
     {% elif user.role == 'COORDINATOR' %}

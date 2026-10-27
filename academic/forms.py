@@ -269,32 +269,14 @@ class StudentProjectRoleForm(forms.ModelForm):
 
 
 class StudentEnrollmentForm(forms.Form):
-    section = forms.ModelChoiceField(
-        queryset=None,
-        empty_label="-- Select a Course Section to Join --",
-        widget=forms.Select(attrs={
-            'class': 'flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none',
-            'required': True
+    enrollment_code = forms.CharField(
+        max_length=20,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase font-mono',
+            'placeholder': 'Enter 6-digit Code (e.g. CG-A8F2K9)'
         })
     )
-
-    def __init__(self, *args, **kwargs):
-        # Extract the user to filter the dropdown
-        user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-
-        from .models import CourseSection
-        qs = CourseSection.objects.select_related('course', 'instructor')
-
-        if user:
-            # Find all courses the student is already in, and exclude them from the dropdown
-            enrolled_course_ids = user.enrolled_sections.values_list('course_id', flat=True)
-            qs = qs.exclude(course_id__in=enrolled_course_ids)
-
-        self.fields['section'].queryset = qs
-        self.fields['section'].label_from_instance = lambda \
-            obj: f"{obj.course.course_code} - {obj.section_name} (Inst: {obj.instructor.name if obj.instructor else 'TBA'})"
-
 
 
 

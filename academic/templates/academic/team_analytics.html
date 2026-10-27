@@ -152,63 +152,112 @@
         </div>
 
     <!--  Recent Commits Feed -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
-        <div class="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-    <div class="flex items-center gap-3">
-        <h3 class="font-bold text-gray-800">Project Commits Feed</h3>
-        <span class="text-xs font-semibold text-gray-600 bg-gray-200 px-2.5 py-1 rounded-full">{{ recent_commits|length }} Total</span>
-    </div>
-            <!-- NEW: Real-time Student Filter Dropdown -->
-            <select id="studentCommitFilter" class="text-sm border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-1.5 pl-3 pr-8">
-                <option value="all">All Team Members</option>
-                {% for pk, student in analytics.mapped_students.items %}
-                    {% if student.github_username %}
-                        <option value="{{ student.github_username|lower }}">{{ student.name }}</option>
-                    {% endif %}
-                {% endfor %}
-            </select>
-        </div>
-
-        <!-- Scrollable list container with an ID for our JS -->
-        <div id="commitsFeedContainer" class="divide-y divide-gray-100 max-h-80 overflow-y-auto bg-white">
-            {% for commit in recent_commits %}
-                <!-- ADDED: 'commit-item' class and 'data-author' attribute -->
-                <div class="commit-item p-4 hover:bg-gray-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                     data-author="{{ commit.author_username|default:commit.author_name|lower }}">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <i class="fa-brands fa-github text-gray-400"></i>
-                            <span class="font-bold text-sm text-gray-900">{{ commit.author_username|default:commit.author_name }}</span>
-                            <span class="text-xs text-gray-400">&bull;</span>
-                            <span class="text-xs text-gray-500">{{ commit.date|slice:":10" }}</span>
-                        </div>
-                        <p class="text-sm text-gray-700 font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200 inline-block truncate max-w-full md:max-w-xl">
-                            {{ commit.message }}
-                        </p>
-                    </div>
-                    <div class="flex items-center gap-4 shrink-0">
-                        <!-- Lines of Code -->
-                        {% if commit.is_merge %}
-                            <span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200" title="Pull Request Merge">
-                                <i class="fa-solid fa-code-merge mr-1"></i> PR Merge
-                            </span>
-                        {% else %}
-                            <div class="flex items-center space-x-1.5">
-                                <span class="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200" title="Additions">+{{ commit.additions }}</span>
-                                <span class="text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200" title="Deletions">-{{ commit.deletions }}</span>
-                            </div>
-                        {% endif %}
-                        <!-- Link to GitHub Commit -->
-                        <a href="{{ commit.url }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition" title="View code diff on GitHub">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        </a>
-                    </div>
+    <!-- Unmapped Commits Alert (Promoted to top for immediate visibility) -->
+        {% if analytics.unmapped_commits %}
+            <div class="bg-yellow-50 border border-yellow-300 rounded-xl p-5 shadow-sm mb-8">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-bold text-yellow-900 flex items-center">
+                        <i class="fa-solid fa-circle-exclamation text-yellow-600 mr-2"></i>
+                        Unmapped Commits Detected ({{ analytics.unmapped_commits|length }})
+                    </h3>
+                    <span class="text-xs font-bold px-2.5 py-1 bg-yellow-200/70 text-yellow-900 rounded-full">
+                        Not Counted Toward Student Scores
+                    </span>
                 </div>
-            {% empty %}
-                <div class="p-6 text-center text-gray-500 text-sm">No commits found for this repository.</div>
-            {% endfor %}
+                <p class="text-xs text-yellow-800 mb-3">
+                    The following commits were pushed by GitHub accounts or local Git configs that do not match any registered team member's GitHub username.
+                </p>
+                <div class="max-h-48 overflow-y-auto bg-white border border-yellow-200 rounded-lg">
+                    <ul class="divide-y divide-gray-100">
+                        {% for commit in analytics.unmapped_commits %}
+                            <li class="p-3 text-sm flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 hover:bg-gray-50">
+                                <div>
+                                    <span class="font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-xs">
+                                        {{ commit.author_username|default:commit.author_name }}
+                                    </span>
+                                    {% if not commit.author_username %}
+                                        <span class="text-[10px] text-gray-500 ml-1">(Local Git: {{ commit.author_email|default:"unlinked email" }})</span>
+                                    {% endif %}
+                                    <span class="text-gray-600 text-xs ml-2 font-mono">"{{ commit.message|truncatechars:50 }}"</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs text-gray-400">{{ commit.date|slice:":10" }}</span>
+                                    <a href="{{ commit.url }}" target="_blank" class="text-gray-400 hover:text-blue-600 text-xs">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                    </a>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Recent Commits Feed -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+            <div class="p-5 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div class="flex items-center gap-3">
+                    <h3 class="font-bold text-gray-800">Project Commits Feed</h3>
+                    <span class="text-xs font-semibold text-gray-600 bg-gray-200 px-2.5 py-1 rounded-full">
+                        {{ analytics.total_commits }} Code Commits {% if analytics.merge_commits_count %} (+{{ analytics.merge_commits_count }} Merges){% endif %}
+                    </span>
+                </div>
+                <!-- Real-time Student + Unmapped Filter Dropdown -->
+                <select id="studentCommitFilter" class="text-sm border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-1.5 pl-3 pr-8">
+                    <option value="all">All Commits ({{ recent_commits|length }})</option>
+                    {% if analytics.unmapped_commits %}
+                        <option value="__unmapped__">⚠️ Unmapped Commits ({{ analytics.unmapped_commits|length }})</option>
+                    {% endif %}
+                    {% for pk, student in analytics.mapped_students.items %}
+                        {% if student.github_username %}
+                            <option value="{{ student.github_username|lower }}">{{ student.name }} ({{ student.commit_count }})</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="commitsFeedContainer" class="divide-y divide-gray-100 max-h-80 overflow-y-auto bg-white">
+                {% for commit in recent_commits %}
+                    <div class="commit-item p-4 hover:bg-gray-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                         data-author="{{ commit.author_username|default:commit.author_name|lower }}"
+                         data-unmapped="{% if commit.is_unmapped %}true{% else %}false{% endif %}">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <i class="fa-brands fa-github text-gray-400"></i>
+                                <span class="font-bold text-sm text-gray-900">{{ commit.author_username|default:commit.author_name }}</span>
+                                {% if commit.is_unmapped %}
+                                    <span class="text-[10px] font-bold px-2 py-0.5 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-full">
+                                        Unmapped
+                                    </span>
+                                {% endif %}
+                                <span class="text-xs text-gray-400">&bull;</span>
+                                <span class="text-xs text-gray-500">{{ commit.date|slice:":10" }}</span>
+                            </div>
+                            <p class="text-sm text-gray-700 font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200 inline-block truncate max-w-full md:max-w-xl">
+                                {{ commit.message }}
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-4 shrink-0">
+                            {% if commit.is_merge %}
+                                <span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200" title="Pull Request Merge">
+                                    <i class="fa-solid fa-code-merge mr-1"></i> PR Merge
+                                </span>
+                            {% else %}
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200" title="Additions">+{{ commit.additions }}</span>
+                                    <span class="text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200" title="Deletions">-{{ commit.deletions }}</span>
+                                </div>
+                            {% endif %}
+                            <a href="{{ commit.url }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition" title="View code diff on GitHub">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            </a>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="p-6 text-center text-gray-500 text-sm">No commits found for this repository.</div>
+                {% endfor %}
+            </div>
         </div>
-    </div>
         <!-- Student Contribution Breakdown -->
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
             <div class="p-5 border-b border-gray-100 bg-gray-50">
@@ -278,31 +327,7 @@
 </div>
         </div>
 
-        <!-- Unmapped Commits Warning -->
-        {% if analytics.unmapped_commits %}
-            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-5 shadow-sm">
-                <h3 class="font-bold text-yellow-800 mb-2 flex items-center">
-                    <i class="fa-solid fa-circle-exclamation mr-2"></i> Unmapped Commits Detected
-                </h3>
-                <p class="text-sm text-yellow-700 mb-4">
-                    The following GitHub users committed to this repository, but their usernames do not match any student registered in this team. 
-                    This happens when a student misspells their username in ContriGrade or commits from a misconfigured local terminal.
-                </p>
-                <div class="max-h-48 overflow-y-auto bg-white border border-yellow-200 rounded-lg">
-                    <ul class="divide-y divide-gray-100">
-                        {% for commit in analytics.unmapped_commits %}
-                            <li class="p-3 text-sm flex justify-between items-center hover:bg-gray-50">
-                                <div>
-                                    <span class="font-semibold text-gray-800">{{ commit.author_username|default:"Unknown User" }}</span>
-                                    <span class="text-gray-500 text-xs ml-2">"{{ commit.message|truncatechars:40 }}"</span>
-                                </div>
-                                <span class="text-xs text-gray-400">{{ commit.date|slice:":10" }}</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        {% endif %}
+
 
     {% endif %}
 </div>
@@ -387,26 +412,22 @@
             }
         });
 
-        // --- 3. Fast Frontend Commit Filtering ---
+// --- 3. Fast Frontend Commit Filtering ---
         const filterSelect = document.getElementById('studentCommitFilter');
         const commitItems = document.querySelectorAll('.commit-item');
 
         if (filterSelect) {
             filterSelect.addEventListener('change', function() {
-                const selectedAuthor = this.value.toLowerCase();
+                const selectedValue = this.value.toLowerCase();
 
                 commitItems.forEach(item => {
-                    if (selectedAuthor === 'all') {
-                        // Restore the original flexbox display
+                    if (selectedValue === 'all') {
                         item.style.display = 'flex';
+                    } else if (selectedValue === '__unmapped__') {
+                        item.style.display = item.getAttribute('data-unmapped') === 'true' ? 'flex' : 'none';
                     } else {
-                        // Check if the commit's data-author tag matches the dropdown
                         const itemAuthor = item.getAttribute('data-author');
-                        if (itemAuthor === selectedAuthor) {
-                            item.style.display = 'flex';
-                        } else {
-                            item.style.display = 'none'; // Instantly hide it
-                        }
+                        item.style.display = (itemAuthor === selectedValue) ? 'flex' : 'none';
                     }
                 });
             });

@@ -88,16 +88,28 @@ def validate_github_repo_url(repo_url):
 
 
 def fetch_deep_commit_stats(commit_info, owner, repo, headers):
-    """Worker function to fetch LOC stats for a single commit."""
+    """Worker function to fetch LOC stats for a single commit with permanent SHA caching."""
     sha = commit_info['sha']
+    sha_cache_key = f"gh_commit_stats_{owner}_{repo}_{sha}"
+    cached_stats = cache.get(sha_cache_key)
+
+    if cached_stats is not None:
+        commit_info['additions'] = cached_stats.get('additions', 0)
+        commit_info['deletions'] = cached_stats.get('deletions', 0)
+        return commit_info
+
     deep_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{sha}"
 
     try:
-        resp = requests.get(deep_url, headers=headers, timeout=5)
+        resp = requests.get(deep_url, headers=headers, timeout=6)
         if resp.status_code == 200:
             stats = resp.json().get('stats', {})
-            commit_info['additions'] = stats.get('additions', 0)
-            commit_info['deletions'] = stats.get('deletions', 0)
+            additions = stats.get('additions', 0)
+            deletions = stats.get('deletions', 0)
+            commit_info['additions'] = additions
+            commit_info['deletions'] = deletions
+            # Commit SHAs are immutable, cache their LOC stats for 7 days
+            cache.set(sha_cache_key, {'additions': additions, 'deletions': deletions}, timeout=604800)
         else:
             commit_info['additions'] = 0
             commit_info['deletions'] = 0
@@ -110,22 +122,26 @@ def fetch_deep_commit_stats(commit_info, owner, repo, headers):
 
 def fetch_team_commits(team, force_refresh=False):
     """
-    Fetches up to 100 recent commits and uses multithreading to rapidly
-    gather Lines of Code (LOC) stats in parallel.
+    Fetches commits across all active branches (deduplicated by SHA) so feature-branch
+    pushes and PR merges never cause student commit counts to drop.
     """
     if not team.github_repo_url:
         return {"status": "error", "message": "No repository linked to this team."}
 
     cache_key = f"team_{team.pk}_github_commits"
 
-    # Check if we already have this data saved in memory
     if not force_refresh:
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
 
-    pattern = r'^https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/?$'
-    match = re.match(pattern, team.github_repo_url)
+    # Clean trailing slashes or .git suffix from repo URL
+    clean_url = team.github_repo_url.strip().rstrip('/')
+    if clean_url.endswith('.git'):
+        clean_url = clean_url[:-4]
+
+    pattern = r'^https?://(?:www\.)?github\.com/([^/]+)/([^/]+)$'
+    match = re.match(pattern, clean_url)
 
     if not match:
         return {"status": "error", "message": "Invalid repository URL format."}
@@ -137,51 +153,74 @@ def fetch_team_commits(team, force_refresh=False):
     if token:
         headers["Authorization"] = f"token {token}"
 
-    # Step 1: Fetch the initial list of commits (Just 1 fast API call)
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=100&page=1"
-
-    branches_url = f"https://api.github.com/repos/{owner}/{repo}/branches"
+    # Step 1: Fetch all branches so commits on feature branches are never missed
+    branches_url = f"https://api.github.com/repos/{owner}/{repo}/branches?per_page=100"
+    branch_names = []
     try:
-        branches_res = requests.get(branches_url, headers=headers, timeout=5)
-        total_branches = len(branches_res.json()) if branches_res.status_code == 200 else 1
+        branches_res = requests.get(branches_url, headers=headers, timeout=6)
+        if branches_res.status_code == 200 and isinstance(branches_res.json(), list):
+            branch_names = [b['name'] for b in branches_res.json() if 'name' in b]
     except requests.RequestException:
-        total_branches = 1
+        pass
 
+    total_branches = len(branch_names) if branch_names else 1
+
+    # Step 2: Fetch commits across branches (up to 5 branches, 100 commits each) & deduplicate by SHA
+    unique_raw_commits = {}
     try:
-        response = requests.get(api_url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            return {"status": "error", "message": f"GitHub API error: Status {response.status_code}"}
-
-        page_commits = response.json()
+        if branch_names:
+            for branch in branch_names[:5]:
+                api_url = f"https://api.github.com/repos/{owner}/{repo}/commits"
+                response = requests.get(
+                    api_url,
+                    headers=headers,
+                    params={'sha': branch, 'per_page': 100},
+                    timeout=10
+                )
+                if response.status_code == 200 and isinstance(response.json(), list):
+                    for item in response.json():
+                        unique_raw_commits[item['sha']] = item
+                elif response.status_code != 200 and not unique_raw_commits:
+                    return {"status": "error", "message": f"GitHub API error: Status {response.status_code}"}
+        else:
+            api_url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=100&page=1"
+            response = requests.get(api_url, headers=headers, timeout=10)
+            if response.status_code != 200:
+                return {"status": "error", "message": f"GitHub API error: Status {response.status_code}"}
+            for item in response.json():
+                unique_raw_commits[item['sha']] = item
     except requests.RequestException as e:
         return {"status": "error", "message": f"Network error: {str(e)}"}
 
-    # Step 2: Clean the base data
+    # Step 3: Clean base commit data with fallback for local IDE/PyCharm author objects
     base_commits = []
-    for item in page_commits:
-        # NEW: Keep the merge commit, but tag it so the analytics engine ignores it
+    for sha, item in unique_raw_commits.items():
         is_merge = len(item.get('parents', [])) > 1
+        github_account = item.get('author') or item.get('committer')
+        commit_author_obj = item.get('commit', {}).get('author', {})
 
-        github_account = item.get('author')
+        author_login = github_account.get('login') if isinstance(github_account, dict) else None
+        # Ignore GitHub's 'web-flow' committer login when author is null on local commits
+        if author_login == 'web-flow' and not item.get('author'):
+            author_login = None
+
         base_commits.append({
-            'sha': item['sha'],
-            'author_username': github_account.get('login') if github_account else None,
-            'author_name': item['commit']['author']['name'],
-            'message': item['commit']['message'],
-            'date': item['commit']['author']['date'],
-            'url': item['html_url'],
+            'sha': sha,
+            'author_username': author_login,
+            'author_name': commit_author_obj.get('name', 'Unknown Author'),
+            'author_email': commit_author_obj.get('email', ''),
+            'message': item.get('commit', {}).get('message', ''),
+            'date': commit_author_obj.get('date', ''),
+            'url': item.get('html_url', ''),
             'is_merge': is_merge
         })
 
-    # Step 3: Fetch Deep Stats Concurrently (The Speed Boost!)
-
+    # Step 4: Fetch Deep LOC Stats Concurrently (10 workers + SHA cache prevents rate limits)
     normal_commits = [c for c in base_commits if not c['is_merge']]
     merge_commits = [c for c in base_commits if c['is_merge']]
 
     final_commits = []
-
-    # Use 20 parallel workers to blast through the API requests instantly
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_commit = {
             executor.submit(fetch_deep_commit_stats, commit, owner, repo, headers): commit
             for commit in normal_commits
@@ -194,46 +233,49 @@ def fetch_team_commits(team, force_refresh=False):
         mc['deletions'] = 0
         final_commits.append(mc)
 
-    # Sort them back into chronological order (since threads finish at random times)
     final_commits.sort(key=lambda x: x['date'], reverse=True)
 
     result = {
         "status": "success",
         "total_commits": len(final_commits),
+        "non_merge_commits": len(normal_commits),
         "total_branches": total_branches,
         "commits": final_commits
     }
 
-    # Save the final result to the memory cache for 1 hour (3600 seconds)
     cache.set(cache_key, result, timeout=3600)
-
     return result
-
 
 
 def analyze_team_contributions(team, commits_data):
     """
-    Maps raw GitHub commits to registered TeamMembers and calculates summary stats.
+    Maps raw GitHub commits to registered TeamMembers, captures unmapped commits
+    (including unmapped local Git/IDE commits), and calculates summary stats.
     """
-    # 1. Fetch all students actually assigned to this team in the database
     members = TeamMember.objects.filter(team=team).select_related('user')
 
-    # 2. Build a fast lookup dictionary using github_username as the key
+    # Primary lookup by github_username; secondary lookup by exact Git author name / email
     member_lookup = {}
+    name_lookup = {}
     for member in members:
         if member.user.github_username:
-            member_lookup[member.user.github_username.lower()] = member
+            clean_gh = member.user.github_username.strip().lstrip('@').lower()
+            member_lookup[clean_gh] = member
+        if member.user.name:
+            name_lookup[member.user.name.strip().lower()] = member
 
-    # 3. Initialize the summary dashboard structure
+    non_merge_commits = [c for c in commits_data if not c.get('is_merge')]
+
     summary = {
         'mapped_students': {},
         'unmapped_commits': [],
-        'total_commits': len(commits_data),
+        'total_commits': len(non_merge_commits),
+        'raw_total_commits': len(commits_data),
+        'merge_commits_count': len(commits_data) - len(non_merge_commits),
         'chart_labels': [],
         'chart_data': []
     }
 
-    # Pre-fill the dictionary for every team member
     for member in members:
         summary['mapped_students'][member.user.pk] = {
             'name': member.user.name,
@@ -245,26 +287,35 @@ def analyze_team_contributions(team, commits_data):
             'commits': []
         }
 
-    # 4. Map each commit to a student
+    # Map each commit to a student or flag as unmapped
     for commit in commits_data:
-        if commit.get('is_merge'):
-            continue
-        gh_username = commit.get('author_username')
+        gh_username = (commit.get('author_username') or '').strip().lstrip('@').lower()
+        author_name = (commit.get('author_name') or '').strip().lower()
 
-        if gh_username and gh_username.lower() in member_lookup:
-            matched_member = member_lookup[gh_username.lower()]
-            student_data = summary['mapped_students'][matched_member.user.pk]
+        matched_member = None
+        if gh_username and gh_username in member_lookup:
+            matched_member = member_lookup[gh_username]
+        elif author_name and author_name in member_lookup:
+            # Fallback if local git user.name was set to their GitHub username
+            matched_member = member_lookup[author_name]
 
-            student_data['commit_count'] += 1
-            student_data['total_additions'] += commit.get('additions', 0)
-            student_data['total_deletions'] += commit.get('deletions', 0)
-            student_data['commits'].append(commit)
+        if matched_member:
+            commit['is_unmapped'] = False
+            commit['mapped_student_name'] = matched_member.user.name
+            # Only count non-merge commits toward student score & volume
+            if not commit.get('is_merge'):
+                student_data = summary['mapped_students'][matched_member.user.pk]
+                student_data['commit_count'] += 1
+                student_data['total_additions'] += commit.get('additions', 0)
+                student_data['total_deletions'] += commit.get('deletions', 0)
+                student_data['commits'].append(commit)
         else:
+            commit['is_unmapped'] = True
             summary['unmapped_commits'].append(commit)
 
-    # 5. Build Timeline Chart Data
+    # Build Timeline Chart Data (non-merge commits)
     timeline_dict = defaultdict(int)
-    for commit in commits_data:
+    for commit in non_merge_commits:
         day_str = commit.get('date', '')[:10]
         if day_str:
             timeline_dict[day_str] += 1
@@ -273,7 +324,7 @@ def analyze_team_contributions(team, commits_data):
     summary['chart_labels'] = sorted_dates
     summary['chart_data'] = [timeline_dict[d] for d in sorted_dates]
 
-    # 6. Integrity Flags Engine
+    # Integrity Flags Engine
     for pk, student in summary['mapped_students'].items():
         student['flags'] = []
         fluff_count = 0
@@ -310,11 +361,10 @@ def analyze_team_contributions(team, commits_data):
         if burst_count > 0:
             student['flags'].append(f"{burst_count} rapid-fire bursts (Commits pushed within 2 minutes of each other).")
 
-    # 7. NEW: Calculate Fair Impact Score & Percentages for Progress Bars
+    # Calculate Fair Impact Score & Percentages for Progress Bars
     total_team_impact = 0
     for pk, student in summary['mapped_students'].items():
         impact = student['total_additions'] + student['total_deletions'] + student['commit_count']
-
         if impact == 0 and student['commit_count'] > 0:
             impact = student['commit_count']
 
