@@ -65,6 +65,7 @@ class CourseSection(models.Model):
     section_id = models.AutoField(primary_key=True)
     course = models.ForeignKey('Course', on_delete=models.CASCADE, related_name='sections')
     section_name = models.CharField(max_length=50, help_text="e.g. Section A, Section B")
+    enrollment_code = models.CharField(max_length=12, unique=True, null=True, blank=True)
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.RESTRICT,

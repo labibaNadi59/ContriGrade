@@ -57,4 +57,5 @@ path('team/<int:team_id>/student/<int:student_id>/evidence/', views.student_evid
 path('instructor/team/<int:team_id>/assessment-report/', views.team_assessment_report, name='team_assessment_report'),
 path('instructor/project/<int:project_id>/assessment-report/', views.project_assessment_report, name='project_assessment_report'),
 
+path('instructor/sections/', views.instructor_sections, name='instructor_sections'),
 ]

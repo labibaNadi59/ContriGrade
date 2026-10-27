@@ -18,7 +18,8 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.db.models import Prefetch
 from django.db.models import Avg
-
+import string
+import random
 
 @login_required
 def team_peer_evaluations(request, team_id):
@@ -523,14 +524,31 @@ def dashboard_redirect(request):
 
     # Strictly for Instructors:
     if request.method == 'POST':
-        # USE THE NEW FORM HERE
-        form = ProjectCreateForm(request.POST, user=request.user)
+        action = request.POST.get('action')
 
+        # NEW: Handle Enrollment Code Generation / Reset
+        if action == 'generate_code':
+            section_id = request.POST.get('section_id')
+            section = get_object_or_404(CourseSection, pk=section_id, instructor=request.user)
+
+            # Generate a clean 6-character code e.g. CG-9X42
+            while True:
+                chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                code = f"CG-{chars}"
+                if not CourseSection.objects.filter(enrollment_code=code).exists():
+                    break
+
+            section.enrollment_code = code
+            section.save()
+            messages.success(request, f"Generated new enrollment code {code} for {section}.")
+            return redirect('dashboard_redirect')
+
+        # Existing Project Creation Form Handler
+        form = ProjectCreateForm(request.POST, user=request.user)
         if form.is_valid():
             project = form.save(commit=False)
 
             if project.section.instructor == request.user:
-                # FORCE THE COURSE POLICY WEIGHTS
                 course = project.section.course
                 policy, created = CourseAssessmentPolicy.objects.get_or_create(course=course)
 
@@ -539,22 +557,24 @@ def dashboard_redirect(request):
                 project.weight_peer = policy.weight_peer
 
                 project.save()
+                messages.success(request, f"Successfully created project '{project.title}'.")
                 return redirect('dashboard_redirect')
             else:
                 form.add_error('section', 'You are not authorized to create a project for a section you do not teach.')
     else:
-
         form = ProjectCreateForm(user=request.user)
 
     projects = Project.objects.filter(section__instructor=request.user).order_by('-deadline')
+    assigned_sections = CourseSection.objects.filter(instructor=request.user).select_related('course').prefetch_related(
+        'students')
 
     context = {
         'form': form,
         'projects': projects,
+        'assigned_sections': assigned_sections,
         'user': request.user
     }
     return render(request, 'academic/instructor_dashboard.html', context)
-
 
 
 @login_required
@@ -621,7 +641,7 @@ def student_courses(request):
     my_sections = CourseSection.objects.filter(students=request.user).select_related('course', 'instructor')
 
 
-    enroll_form = StudentEnrollmentForm(user=request.user)
+    enroll_form = StudentEnrollmentForm()
 
     return render(request, 'academic/student_courses.html', {
         'my_sections': my_sections,
@@ -632,15 +652,24 @@ def student_courses(request):
 @login_required
 @student_required
 def enroll_in_section(request):
-    # Process enrollment and redirect back to the Courses page
     if request.method == 'POST':
-        form = StudentEnrollmentForm(request.POST, user=request.user)
+        form = StudentEnrollmentForm(request.POST)
         if form.is_valid():
-            section = form.cleaned_data['section']
+            code = form.cleaned_data['enrollment_code'].strip().upper()
+            try:
+                section = CourseSection.objects.select_related('course', 'instructor').get(enrollment_code=code)
 
-            section.students.add(request.user)
-            messages.success(request,
-                             f"Successfully enrolled in {section.course.course_code} - {section.section_name}.")
+                # Check if already enrolled in this course
+                if section.course in request.user.enrolled_sections.values_list('course', flat=True):
+                    messages.error(request, f"You are already enrolled in a section for {section.course.course_code}.")
+                else:
+                    section.students.add(request.user)
+                    messages.success(request,
+                                     f"Successfully enrolled in {section.course.course_code} ({section.section_name})!")
+            except CourseSection.DoesNotExist:
+                messages.error(request, "Invalid enrollment code. Please check with your instructor.")
+        else:
+            messages.error(request, "Please provide a valid enrollment code.")
 
     return redirect('student_courses')
 
@@ -1509,4 +1538,36 @@ def project_assessment_report(request, project_id):
         'total_members': len(members_data),
         'generated_at': timezone.now(),
         'is_project_wide': True,
+    })
+
+
+@login_required
+def instructor_sections(request):
+    """Dedicated instructor view for managing assigned sections and student enrollment codes."""
+    if request.user.role != 'INSTRUCTOR':
+        messages.error(request, "Access denied. Instructor privileges required.")
+        return redirect('dashboard_redirect')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'generate_code':
+            section_id = request.POST.get('section_id')
+            section = get_object_or_404(CourseSection, pk=section_id, instructor=request.user)
+
+            while True:
+                chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                code = f"CG-{chars}"
+                if not CourseSection.objects.filter(enrollment_code=code).exists():
+                    break
+
+            section.enrollment_code = code
+            section.save()
+            messages.success(request, f"Generated new enrollment code {code} for {section}.")
+            return redirect('instructor_sections')
+
+    assigned_sections = CourseSection.objects.filter(instructor=request.user).select_related('course').prefetch_related(
+        'students')
+
+    return render(request, 'academic/instructor_sections.html', {
+        'assigned_sections': assigned_sections,
     })
