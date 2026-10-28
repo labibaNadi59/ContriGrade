@@ -7,7 +7,7 @@ from django.utils import timezone
 from accounts.decorators import student_required
 from .models import Project, Team, TeamMember, Course, CourseSection, NonCodingDeliverable, DeliverableContribution, \
     EvaluationCriterion, PeerEvaluation, PeerEvaluationScore, PolicyChangeRequest, CourseAssessmentPolicy, Notification, \
-    FinalAssessment
+    FinalAssessment, ClaimPeerVote
 from .forms import ProjectForm, TeamForm, AssignInstructorForm, CourseSectionForm, CourseForm, StudentProjectRoleForm, \
     StudentEnrollmentForm, TeamRepoForm, NonCodingDeliverableForm, ProjectCreateForm
 from django.shortcuts import get_object_or_404
@@ -124,52 +124,96 @@ def student_team_progress(request, team_id):
         else:
             error_message = fetch_result.get('message', 'Failed to fetch commits from GitHub.')
 
-    deliverables = team.deliverables.all().order_by('-submitted_at').prefetch_related('contributions__student')
+    deliverables = team.deliverables.all().order_by('-submitted_at').prefetch_related(
+        'contributions__student',
+        'contributions__peer_votes__voter'
+    )
 
-    if request.method == 'POST' and 'submit_deliverable' in request.POST:
+    if request.method == 'POST':
         if not team.project.is_active():
             messages.error(request, f"Submissions locked. The deadline for {team.project.title} has passed.")
             return redirect('student_team_progress', team_id=team.team_id)
 
-        deliverable_form = NonCodingDeliverableForm(request.POST)
-        if deliverable_form.is_valid():
-            teammate_ids = request.POST.getlist('teammate_id[]')
-            contribution_areas = request.POST.getlist('contribution_area[]')
+        # Action 1: Submit a new deliverable & auto-claim
+        if 'submit_deliverable' in request.POST:
+            deliverable_form = NonCodingDeliverableForm(request.POST)
+            my_contribution = request.POST.get('my_contribution_area', '').strip()
 
-            for t_id, area in zip(teammate_ids, contribution_areas):
-                if t_id and not area.strip():
-                    messages.error(request,
-                                   "Submission failed: You must describe the contribution area for each selected teammate.")
+            if deliverable_form.is_valid():
+                if not my_contribution:
+                    messages.error(request, "You must describe your personal contribution to this deliverable.")
                     return redirect('student_team_progress', team_id=team.team_id)
 
-            deliverable = deliverable_form.save(commit=False)
-            deliverable.team = team
-            deliverable.submitted_by = request.user
-            deliverable.save()
+                deliverable = deliverable_form.save(commit=False)
+                deliverable.team = team
+                deliverable.submitted_by = request.user
+                deliverable.save()
 
-            valid_team_member_ids = set(team.members.values_list('pk', flat=True))
-            for t_id, area in zip(teammate_ids, contribution_areas):
-                if t_id and area.strip():
-                    try:
-                        student_id = int(t_id)
-                        if student_id in valid_team_member_ids:
-                            student = get_object_or_404(User, pk=student_id)
-                            DeliverableContribution.objects.create(
-                                deliverable=deliverable, student=student, contribution_area=area.strip(),
-                                status='PENDING'
-                            )
-                    except ValueError:
-                        pass
+                DeliverableContribution.objects.create(
+                    deliverable=deliverable,
+                    student=request.user,
+                    contribution_area=my_contribution,
+                    status='PENDING'
+                )
 
-            messages.success(request, "Deliverable submitted successfully.")
+                # NOTIFY TEAMMATES
+                teammates = team.members.exclude(pk=request.user.pk)
+                notifications = [
+                    Notification(
+                        recipient=teammate,
+                        message=f"{request.user.name} submitted '{deliverable.title}' and claimed a contribution. Please verify."
+                    ) for teammate in teammates
+                ]
+                Notification.objects.bulk_create(notifications)
+
+                messages.success(request, "Deliverable and personal contribution claim submitted successfully.")
+                return redirect('student_team_progress', team_id=team.team_id)
+
+        # Action 2: Add a personal contribution claim to an existing deliverable
+        elif 'add_claim' in request.POST:
+            deliverable_id = request.POST.get('deliverable_id')
+            deliverable = get_object_or_404(NonCodingDeliverable, pk=deliverable_id, team=team)
+            contribution_area = request.POST.get('contribution_area', '').strip()
+
+            if not contribution_area:
+                messages.error(request, "Please describe what you contributed to this deliverable.")
+                return redirect('student_team_progress', team_id=team.team_id)
+
+            existing_claim = DeliverableContribution.objects.filter(deliverable=deliverable,
+                                                                    student=request.user).first()
+            if existing_claim:
+                existing_claim.contribution_area = contribution_area
+                existing_claim.save()
+                messages.success(request, "Your contribution claim was updated.")
+            else:
+                DeliverableContribution.objects.create(
+                    deliverable=deliverable,
+                    student=request.user,
+                    contribution_area=contribution_area,
+                    status='PENDING'
+                )
+
+                # NOTIFY TEAMMATES
+                teammates = team.members.exclude(pk=request.user.pk)
+                notifications = [
+                    Notification(
+                        recipient=teammate,
+                        message=f"{request.user.name} added a contribution claim on '{deliverable.title}'. Please verify."
+                    ) for teammate in teammates
+                ]
+                Notification.objects.bulk_create(notifications)
+
+                messages.success(request, "Your contribution claim has been submitted for peer verification.")
+
             return redirect('student_team_progress', team_id=team.team_id)
     else:
         deliverable_form = NonCodingDeliverableForm()
 
-    # --- NEW: Get IDs of teammates this user has already evaluated ---
     evaluated_ids = PeerEvaluation.objects.filter(
         team=team, evaluator=request.user
     ).values_list('evaluatee_id', flat=True)
+
+    user_voted_claim_ids = ClaimPeerVote.objects.filter(voter=request.user).values_list('claim_id', flat=True)
 
     return render(request, 'academic/student_progress.html', {
         'team': team,
@@ -178,7 +222,8 @@ def student_team_progress(request, team_id):
         'error_message': error_message,
         'deliverable_form': deliverable_form,
         'deliverables': deliverables,
-        'evaluated_ids': evaluated_ids,  # Passed to the template
+        'evaluated_ids': evaluated_ids,
+        'user_voted_claim_ids': user_voted_claim_ids,
     })
 
 
@@ -601,39 +646,59 @@ def student_dashboard(request):
 @login_required
 @student_required
 def verify_claim(request, claim_id):
-    # Security: Ensure the claim actually belongs to the user clicking the button
-    claim = get_object_or_404(DeliverableContribution, pk=claim_id, student=request.user)
+    claim = get_object_or_404(DeliverableContribution, pk=claim_id)
+    team = claim.deliverable.team
+
+    if not team.members.filter(pk=request.user.pk).exists() or claim.student == request.user:
+        messages.error(request, "Invalid action.")
+        return redirect('student_team_progress', team_id=team.team_id)
 
     if request.method == 'POST':
-        # Security: Cannot verify if the project deadline has passed
-        if claim.deliverable.team.project.is_active():
-            claim.status = 'VERIFIED'
-            claim.save()
-            messages.success(request, f"Verified contribution for '{claim.deliverable.title}'.")
+        if team.project.is_active():
+            # Create or update the vote
+            ClaimPeerVote.objects.update_or_create(
+                claim=claim, voter=request.user,
+                defaults={'vote': 'VERIFIED'}
+            )
+
+            # If there are no rejections, set the claim status to verified
+            if not claim.peer_votes.filter(vote='REJECTED').exists():
+                claim.status = 'VERIFIED'
+                claim.save()
+
+            messages.success(request, f"Verified contribution claim for {claim.student.name}.")
         else:
             messages.error(request, "Cannot verify. The project deadline has passed.")
 
-    return redirect('student_dashboard')
+    return redirect('student_team_progress', team_id=team.team_id)
 
 
 @login_required
 @student_required
 def reject_claim(request, claim_id):
-    # Security: Ensure the claim actually belongs to the user clicking the button
-    claim = get_object_or_404(DeliverableContribution, pk=claim_id, student=request.user)
+    claim = get_object_or_404(DeliverableContribution, pk=claim_id)
+    team = claim.deliverable.team
+
+    if not team.members.filter(pk=request.user.pk).exists() or claim.student == request.user:
+        messages.error(request, "Invalid action.")
+        return redirect('student_team_progress', team_id=team.team_id)
 
     if request.method == 'POST':
-        # Security: Cannot reject if the project deadline has passed
-        if claim.deliverable.team.project.is_active():
+        if team.project.is_active():
+            ClaimPeerVote.objects.update_or_create(
+                claim=claim, voter=request.user,
+                defaults={'vote': 'REJECTED'}
+            )
+
+            # Any rejection flags the claim as rejected
             claim.status = 'REJECTED'
             claim.save()
-            messages.success(request, f"Rejected contribution for '{claim.deliverable.title}'.")
+
+            messages.warning(request, f"Rejected contribution claim for {claim.student.name}.")
         else:
             messages.error(request, "Cannot reject. The project deadline has passed.")
 
-    return redirect('student_dashboard')
-
-
+    return redirect('student_team_progress', team_id=team.team_id)
 @login_required
 @student_required
 def student_courses(request):
@@ -1201,6 +1266,15 @@ def submit_policy_request(request, project_id):
             proposed_peer=p_peer,
             justification=justification
         )
+
+        # NEW: Notify the course coordinator
+        coordinator = project.section.course.coordinator
+        from .models import Notification # Ensure imported if not already at the top
+        Notification.objects.create(
+            recipient=coordinator,
+            message=f"Instructor {request.user.name} requested a custom policy for project '{project.title}'."
+        )
+
         messages.success(request, "Custom policy request submitted to coordinator for review.")
 
     return redirect('edit_project', project_id=project.pk)
@@ -1254,12 +1328,15 @@ def update_course_policy(request, course_id):
 
 @login_required
 def read_notification(request, notif_id):
+    # Fetch the notification ensuring it belongs to the logged-in user
     notification = get_object_or_404(Notification, pk=notif_id, recipient=request.user)
-    notification.is_read = True
-    notification.save()
 
-    if notification.link:
-        return redirect(notification.link)
+    # Mark it as read
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save()
+
+    # Ignore any saved link and just refresh the current page the user is on
     return redirect(request.META.get('HTTP_REFERER', 'dashboard_redirect'))
 
 

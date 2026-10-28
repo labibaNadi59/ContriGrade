@@ -264,6 +264,10 @@ def analyze_team_contributions(team, commits_data):
         if member.user.name:
             name_lookup[member.user.name.strip().lower()] = member
 
+        # Optional extra safety: map their Django login email as well
+        if member.user.email:
+            name_lookup[member.user.email.strip().lower()] = member
+
     non_merge_commits = [c for c in commits_data if not c.get('is_merge')]
 
     summary = {
@@ -291,12 +295,18 @@ def analyze_team_contributions(team, commits_data):
     for commit in commits_data:
         gh_username = (commit.get('author_username') or '').strip().lstrip('@').lower()
         author_name = (commit.get('author_name') or '').strip().lower()
+        author_email = (commit.get('author_email') or '').strip().lower()
 
         matched_member = None
         if gh_username and gh_username in member_lookup:
             matched_member = member_lookup[gh_username]
+        # FIX: Now correctly checks the name_lookup & email fallback!
+        elif author_name and author_name in name_lookup:
+            matched_member = name_lookup[author_name]
+        elif author_email and author_email in name_lookup:
+            matched_member = name_lookup[author_email]
+        # Fallback if local git user.name was set exactly to their GitHub username
         elif author_name and author_name in member_lookup:
-            # Fallback if local git user.name was set to their GitHub username
             matched_member = member_lookup[author_name]
 
         if matched_member:

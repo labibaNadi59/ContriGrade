@@ -11,6 +11,8 @@ from unittest.mock import patch, MagicMock
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
 django.setup()
 
+from django.utils import timezone
+from django.test import TestCase
 import unittest
 from academic.utils import (
     validate_github_connection,
@@ -22,7 +24,7 @@ from academic.models import Team, TeamMember, Course, CourseSection, Project
 from accounts.models import User
 
 
-class TestGitHubBackendUnit(unittest.TestCase):
+class TestGitHubBackendUnit(TestCase):
 
     @patch('requests.get')
     def test_validate_github_connection_success(self, mock_get):
@@ -96,7 +98,24 @@ class TestGitHubBackendUnit(unittest.TestCase):
     def test_analyze_team_contributions_integrity_flags(self):
         team = Team.objects.filter(pk=2).first()
         if not team:
-            self.skipTest("Team 2 not in database")
+            coord, _ = User.objects.get_or_create(
+                email="coord@gmail.com",
+                defaults={"name": "Coordinator", "role": User.Role.COORDINATOR}
+            )
+            user, _ = User.objects.get_or_create(
+                email="labiba@gmail.com",
+                defaults={"name": "labiba", "github_username": "labibaNadi59", "role": User.Role.STUDENT}
+            )
+            course, _ = Course.objects.get_or_create(course_code="CSE 101", defaults={"course_name": "Test Course", "coordinator": coord})
+            section, _ = CourseSection.objects.get_or_create(course=course, section_name="Section A")
+            section.students.add(user)
+            project, _ = Project.objects.get_or_create(
+                section=section,
+                title="Test Project",
+                defaults={"deadline": timezone.now() + timezone.timedelta(days=7)}
+            )
+            team, _ = Team.objects.get_or_create(project=project, team_name="Team 2")
+            TeamMember.objects.get_or_create(team=team, user=user, defaults={"role_in_team": "Developer"})
 
         commits_data = [
             # Trivial/fluff commit (additions+deletions < 3 and message < 5)

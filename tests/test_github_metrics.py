@@ -163,7 +163,7 @@ class TestGitHubMetricsRetrieval(TestCase):
                 "parents": [{"sha": "parent1"}]
             }
         ]
-        mock_get.side_effect = [branch_resp, commits_resp]
+        mock_get.side_effect = [branch_resp, commits_resp, commits_resp]
 
         mock_deep.side_effect = lambda commit, owner, repo, headers: {
             **commit, "additions": 15, "deletions": 5
@@ -226,7 +226,7 @@ class TestGitHubMetricsRetrieval(TestCase):
                 "parents": [{"sha": "p1"}]
             }
         ]
-        mock_get.side_effect = [branch_resp, commits_resp]
+        mock_get.side_effect = [branch_resp, commits_resp, commits_resp]
 
         def fake_deep_stats(c, o, r, h):
             if c["sha"] == "normal_old":
@@ -1016,11 +1016,9 @@ class TestGitHubMetricsDisplayViews(TestCase):
         self.assertContains(resp, "Teams Connected")
 
         # Table headers
-        self.assertContains(resp, "Student Name")
-        self.assertContains(resp, "Team")
-        self.assertContains(resp, "Commits")
-        self.assertContains(resp, "Lines of Code")
-        self.assertContains(resp, "Integrity Analysis")
+        self.assertContains(resp, "Student & Team")
+        self.assertContains(resp, "Final Score")
+        self.assertContains(resp, "Integrity & Evidence Status")
 
         # Student data: Dave (2 commits) should appear before Carol (1 commit)
         self.assertContains(resp, "Dave Bowman")
@@ -1029,16 +1027,17 @@ class TestGitHubMetricsDisplayViews(TestCase):
         # CSV Download Link
         self.assertContains(resp, "?export=csv")
 
+    @patch('academic.utils.fetch_team_commits')
     @patch('academic.views.fetch_team_commits')
-    def test_master_report_csv_export(self, mock_fetch):
+    def test_master_report_csv_export(self, mock_fetch_views, mock_fetch_utils):
         """
         Verifies CSV export endpoint (?export=csv):
         - Returns 200 with Content-Type: text/csv
         - Attachment filename in Content-Disposition
-        - Valid CSV header: Student Name,GitHub Username,Team,Role,Commits,Lines Added,Lines Deleted,Integrity Flags
+        - Valid CSV header
         - Data rows match aggregated student contributions
         """
-        mock_fetch.return_value = {
+        mock_fetch_views.return_value = mock_fetch_utils.return_value = {
             "status": "success",
             "total_commits": 1,
             "total_branches": 1,
@@ -1070,7 +1069,16 @@ class TestGitHubMetricsDisplayViews(TestCase):
         # Header check
         self.assertEqual(
             reader[0],
-            ['Student Name', 'GitHub Username', 'Team', 'Role', 'Commits', 'Lines Added', 'Lines Deleted', 'Integrity Flags']
+            [
+                'Student Name', 'GitHub Username', 'Team', 'Role',
+                'Commits', 'Lines Added', 'Lines Deleted',
+                'Verified Deliverables', 'Peer Reviews Received',
+                f'GitHub Score ({self.project.weight_github}%)',
+                f'Deliverables Score ({self.project.weight_deliverables}%)',
+                f'Peer Eval Score ({self.project.weight_peer}%)',
+                'Final Weighted Score (%)',
+                'Evidence Status', 'Integrity Flags'
+            ]
         )
 
         # Check rows
@@ -1082,5 +1090,5 @@ class TestGitHubMetricsDisplayViews(TestCase):
         self.assertEqual(carol_row[4], "1")    # Commits
         self.assertEqual(carol_row[5], "110")  # Additions
         self.assertEqual(carol_row[6], "25")   # Deletions
-        self.assertEqual(carol_row[7], "Clean") # Integrity Flags
+        self.assertEqual(carol_row[-1], "Clean") # Integrity Flags
 

@@ -13,10 +13,12 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
 django.setup()
 
 from django.test.utils import setup_test_environment, teardown_test_environment
-from django.test import Client
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.test import TestCase, Client, override_settings
+from django.utils import timezone
 from django.contrib.messages import get_messages
 
-from academic.models import Team, TeamMember, Project
+from academic.models import Course, CourseSection, Team, TeamMember, Project
 from accounts.models import User
 from academic.forms import TeamRepoForm
 from academic.utils import validate_github_repo_url
@@ -161,7 +163,7 @@ class TestRepoValidationEngine(unittest.TestCase):
 # =====================================================================
 # 2. TEAM REPO FORM VALIDATION UNIT TESTS
 # =====================================================================
-class TestTeamRepoFormValidation(unittest.TestCase):
+class TestTeamRepoFormValidation(TestCase):
     """
     Tests Django TeamRepoForm validation logic, field errors, and clean_url generation.
     """
@@ -169,7 +171,18 @@ class TestTeamRepoFormValidation(unittest.TestCase):
     def setUp(self):
         self.team = Team.objects.filter(pk=2).first()
         if not self.team:
-            self.skipTest("Team 2 not in database")
+            coord, _ = User.objects.get_or_create(
+                email="coord_test@example.com",
+                defaults={"name": "Coordinator", "role": User.Role.COORDINATOR}
+            )
+            course, _ = Course.objects.get_or_create(course_code="CSE 101", defaults={"course_name": "Test Course", "coordinator": coord})
+            section, _ = CourseSection.objects.get_or_create(course=course, section_name="Section A")
+            project, _ = Project.objects.get_or_create(
+                section=section,
+                title="Test Project",
+                defaults={"deadline": timezone.now() + timezone.timedelta(days=7)}
+            )
+            self.team, _ = Team.objects.get_or_create(project=project, team_name="Team 2")
 
     @patch('academic.forms.validate_github_repo_url')
     def test_form_valid_url(self, mock_validator):
@@ -208,7 +221,7 @@ class TestTeamRepoFormValidation(unittest.TestCase):
 # =====================================================================
 # 3. VIEW & SECURITY WORKFLOW TESTS (DJANGO TEST CLIENT)
 # =====================================================================
-class TestRepoSubmissionViewWorkflow(unittest.TestCase):
+class TestRepoSubmissionViewWorkflow(TestCase):
     """
     Tests security access control, authentication, authorization, GET form rendering,
     and POST submissions with status codes, redirects, flash messages, and DB updates.
@@ -217,11 +230,9 @@ class TestRepoSubmissionViewWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        setup_test_environment()
 
     @classmethod
     def tearDownClass(cls):
-        teardown_test_environment()
         super().tearDownClass()
 
     def setUp(self):
@@ -232,7 +243,36 @@ class TestRepoSubmissionViewWorkflow(unittest.TestCase):
         self.team = Team.objects.filter(pk=2).first()
 
         if not (self.student_in_team and self.student_other and self.team):
-            self.skipTest("Required seed data (users/teams) not present in database")
+            if not self.instructor:
+                self.instructor, _ = User.objects.get_or_create(
+                    email='tanjina@gmail.com', defaults={'name': 'Tanjina', 'role': User.Role.INSTRUCTOR}
+                )
+            if not self.student_in_team:
+                self.student_in_team, _ = User.objects.get_or_create(
+                    email='labiba@gmail.com', defaults={'name': 'Labiba', 'role': User.Role.STUDENT, 'github_username': 'labibaNadi59'}
+                )
+            if not self.student_other:
+                self.student_other, _ = User.objects.get_or_create(
+                    email='sowrov@gmail.com', defaults={'name': 'Sowrov', 'role': User.Role.STUDENT}
+                )
+            if not self.team:
+                course, _ = Course.objects.get_or_create(
+                    course_code="CSE 101",
+                    defaults={"course_name": "Test Course", "coordinator": self.instructor}
+                )
+                section, _ = CourseSection.objects.get_or_create(
+                    course=course,
+                    section_name="Section A",
+                    defaults={"instructor": self.instructor}
+                )
+                section.students.add(self.student_in_team, self.student_other)
+                project, _ = Project.objects.get_or_create(
+                    section=section,
+                    title="Test Project",
+                    defaults={"deadline": timezone.now() + timezone.timedelta(days=7)}
+                )
+                self.team, _ = Team.objects.get_or_create(project=project, team_name="Team 2")
+                TeamMember.objects.get_or_create(team=self.team, user=self.student_in_team, defaults={"role_in_team": "Lead"})
 
         self.repo_url = f"/academic/student/team/{self.team.team_id}/repo/"
 
@@ -344,7 +384,8 @@ class TestRepoSubmissionViewWorkflow(unittest.TestCase):
 # =====================================================================
 # 4. LIVE SELENIUM E2E BROWSER TESTS
 # =====================================================================
-class TestRepoSubmissionSeleniumE2E(unittest.TestCase):
+@override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+class TestRepoSubmissionSeleniumE2E(StaticLiveServerTestCase):
     """
     End-to-End browser tests covering the live submission & validation workflow:
     - Format validation in UI
@@ -353,7 +394,9 @@ class TestRepoSubmissionSeleniumE2E(unittest.TestCase):
     - Security block for unauthorized student
     """
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
         options = Options()
         options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
@@ -363,15 +406,49 @@ class TestRepoSubmissionSeleniumE2E(unittest.TestCase):
         options.add_argument("--log-level=3")
 
         service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=options)
-        self.wait = WebDriverWait(self.driver, 25)
+        cls.driver = webdriver.Chrome(service=service, options=options)
+        cls.wait = WebDriverWait(cls.driver, 25)
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.driver:
+            cls.driver.quit()
+        super().tearDownClass()
 
     def tearDown(self):
-        if self.driver:
-            self.driver.quit()
+        super().tearDown()
+        self.driver.delete_all_cookies()
+
+    def setUp(self):
+        super().setUp()
+        self.instructor = User.objects.create_user(
+            email='tanjina@gmail.com', name='Tanjina', password='123', role=User.Role.INSTRUCTOR
+        )
+        self.student_in_team = User.objects.create_user(
+            email='labiba@gmail.com', name='Labiba', password='123', role=User.Role.STUDENT
+        )
+        self.student_in_team.github_username = 'labibaNadi59'
+        self.student_in_team.save()
+        self.student_other = User.objects.create_user(
+            email='sowrov@gmail.com', name='Sowrov', password='123', role=User.Role.STUDENT
+        )
+        self.course = Course.objects.create(
+            course_code="CSE 101", course_name="Test Course", coordinator=self.instructor
+        )
+        self.section = CourseSection.objects.create(
+            course=self.course, section_name="Section A", instructor=self.instructor
+        )
+        self.section.students.add(self.student_in_team, self.student_other)
+        self.project = Project.objects.create(
+            section=self.section,
+            title="Test Project",
+            deadline=timezone.now() + timezone.timedelta(days=7)
+        )
+        self.team = Team.objects.create(project=self.project, team_name="Team 2")
+        TeamMember.objects.create(team=self.team, user=self.student_in_team, role_in_team="Lead")
 
     def _login(self, email, password):
-        self.driver.get(f"{BASE_URL}/accounts/login/")
+        self.driver.get(f"{self.live_server_url}/accounts/login/")
         user_field = self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
         pass_field = self.driver.find_element(By.NAME, "password")
         submit_btn = self.driver.find_element(By.XPATH, "//button[@type='submit']")
@@ -389,7 +466,7 @@ class TestRepoSubmissionSeleniumE2E(unittest.TestCase):
         print("\n[E2E] Testing UI rejection of invalid URL format...")
         self._login("labiba@gmail.com", "123")
 
-        repo_link_url = f"{BASE_URL}/academic/student/team/2/repo/"
+        repo_link_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(repo_link_url)
 
         header = self.wait.until(EC.visibility_of_element_located((By.TAG_NAME, "h2"))).text
@@ -412,7 +489,7 @@ class TestRepoSubmissionSeleniumE2E(unittest.TestCase):
         print("\n[E2E] Testing UI rejection of non-existent GitHub repository...")
         self._login("labiba@gmail.com", "123")
 
-        repo_link_url = f"{BASE_URL}/academic/student/team/2/repo/"
+        repo_link_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(repo_link_url)
 
         url_input = self.wait.until(EC.presence_of_element_located((By.NAME, "github_repo_url")))
@@ -432,7 +509,7 @@ class TestRepoSubmissionSeleniumE2E(unittest.TestCase):
         print("\n[E2E] Testing successful repository submission and dashboard update...")
         self._login("labiba@gmail.com", "123")
 
-        repo_link_url = f"{BASE_URL}/academic/student/team/2/repo/"
+        repo_link_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(repo_link_url)
 
         valid_repo = "https://github.com/labibaNadi59/ContriGrade"
@@ -460,7 +537,7 @@ class TestRepoSubmissionSeleniumE2E(unittest.TestCase):
         print("\n[E2E] Testing Security Block for Unauthorized Student...")
         self._login("sowrov@gmail.com", "123")
 
-        unauthorized_url = f"{BASE_URL}/academic/student/team/2/repo/"
+        unauthorized_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(unauthorized_url)
 
         self.wait.until(lambda d: "/repo/" not in d.current_url and "/student" in d.current_url)
