@@ -134,48 +134,48 @@ class ClaimVerificationActionRecordingTests(ClaimWorkflowBaseTestCase):
     def test_verify_action_records_verified_status_in_db(self):
         """POST to verify_claim changes status from PENDING to VERIFIED in the database."""
         self.assertEqual(self.claim_bob.status, 'PENDING')
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         resp = self.client.post(self.verify_url_bob)
 
         self.assertEqual(resp.status_code, 302)
-        self.assertRedirects(resp, self.dashboard_url)
+        self.assertRedirects(resp, self.progress_url)
 
         self.claim_bob.refresh_from_db()
         self.assertEqual(self.claim_bob.status, 'VERIFIED')
 
     def test_verify_action_queues_success_flash_message(self):
         """Successful verification queues the correct success flash message."""
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         resp = self.client.post(self.verify_url_bob, follow=True)
 
         messages = [m.message for m in get_messages(resp.wsgi_request)]
-        expected_msg = f"Verified contribution for '{self.deliverable.title}'."
+        expected_msg = f"Verified contribution claim for {self.bob.name}."
         self.assertIn(expected_msg, messages)
 
     def test_reject_action_records_rejected_status_in_db(self):
         """POST to reject_claim changes status from PENDING to REJECTED in the database."""
         self.assertEqual(self.claim_charlie.status, 'PENDING')
-        self.client.force_login(self.charlie)
+        self.client.force_login(self.alice)
         resp = self.client.post(self.reject_url_charlie)
 
         self.assertEqual(resp.status_code, 302)
-        self.assertRedirects(resp, self.dashboard_url)
+        self.assertRedirects(resp, self.progress_url)
 
         self.claim_charlie.refresh_from_db()
         self.assertEqual(self.claim_charlie.status, 'REJECTED')
 
     def test_reject_action_queues_success_flash_message(self):
         """Successful rejection queues the correct success flash message."""
-        self.client.force_login(self.charlie)
+        self.client.force_login(self.alice)
         resp = self.client.post(self.reject_url_charlie, follow=True)
 
         messages = [m.message for m in get_messages(resp.wsgi_request)]
-        expected_msg = f"Rejected contribution for '{self.deliverable.title}'."
+        expected_msg = f"Rejected contribution claim for {self.charlie.name}."
         self.assertIn(expected_msg, messages)
 
     def test_get_request_on_verify_does_not_modify_claim_status(self):
         """GET request on verify_claim view does NOT modify claim status (must be POST)."""
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         resp = self.client.get(self.verify_url_bob)
 
         self.assertEqual(resp.status_code, 302)
@@ -184,7 +184,7 @@ class ClaimVerificationActionRecordingTests(ClaimWorkflowBaseTestCase):
 
     def test_get_request_on_reject_does_not_modify_claim_status(self):
         """GET request on reject_claim view does NOT modify claim status (must be POST)."""
-        self.client.force_login(self.charlie)
+        self.client.force_login(self.alice)
         resp = self.client.get(self.reject_url_charlie)
 
         self.assertEqual(resp.status_code, 302)
@@ -193,7 +193,7 @@ class ClaimVerificationActionRecordingTests(ClaimWorkflowBaseTestCase):
 
     def test_verify_action_is_idempotent(self):
         """Repeated POST to verify_claim keeps status VERIFIED and functions cleanly."""
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         self.client.post(self.verify_url_bob)
         self.client.post(self.verify_url_bob)
 
@@ -202,7 +202,7 @@ class ClaimVerificationActionRecordingTests(ClaimWorkflowBaseTestCase):
 
     def test_reject_action_is_idempotent(self):
         """Repeated POST to reject_claim keeps status REJECTED and functions cleanly."""
-        self.client.force_login(self.charlie)
+        self.client.force_login(self.alice)
         self.client.post(self.reject_url_charlie)
         self.client.post(self.reject_url_charlie)
 
@@ -233,9 +233,10 @@ class ClaimVerificationSystemReflectionTests(ClaimWorkflowBaseTestCase):
 
     def test_verified_claim_removed_from_student_dashboard(self):
         """After verification, the claim is removed from pending notifications on the dashboard."""
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         self.client.post(self.verify_url_bob)
 
+        self.client.force_login(self.bob)
         resp = self.client.get(self.dashboard_url)
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(self.claim_bob, resp.context['pending_claims'])
@@ -244,9 +245,10 @@ class ClaimVerificationSystemReflectionTests(ClaimWorkflowBaseTestCase):
 
     def test_rejected_claim_removed_from_student_dashboard(self):
         """After rejection, the claim is removed from pending notifications on the dashboard."""
-        self.client.force_login(self.charlie)
+        self.client.force_login(self.alice)
         self.client.post(self.reject_url_charlie)
 
+        self.client.force_login(self.charlie)
         resp = self.client.get(self.dashboard_url)
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(self.claim_charlie, resp.context['pending_claims'])
@@ -278,7 +280,7 @@ class ClaimVerificationSystemReflectionTests(ClaimWorkflowBaseTestCase):
 
     def test_verified_badge_reflected_on_student_team_progress(self):
         """Verified claim reflects a green 'Verified' badge on student_team_progress page."""
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         self.client.post(self.verify_url_bob)
 
         self.client.force_login(self.alice)
@@ -291,7 +293,7 @@ class ClaimVerificationSystemReflectionTests(ClaimWorkflowBaseTestCase):
 
     def test_rejected_badge_reflected_on_student_team_progress(self):
         """Rejected claim reflects a red 'Rejected' badge on student_team_progress page."""
-        self.client.force_login(self.charlie)
+        self.client.force_login(self.alice)
         self.client.post(self.reject_url_charlie)
 
         self.client.force_login(self.alice)
@@ -304,10 +306,9 @@ class ClaimVerificationSystemReflectionTests(ClaimWorkflowBaseTestCase):
 
     def test_mixed_badges_reflected_on_deliverable_with_multiple_claims(self):
         """Deliverable with Bob verified and Charlie rejected reflects both badges accurately."""
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         self.client.post(self.verify_url_bob)
 
-        self.client.force_login(self.charlie)
         self.client.post(self.reject_url_charlie)
 
         self.client.force_login(self.alice)
@@ -321,10 +322,9 @@ class ClaimVerificationSystemReflectionTests(ClaimWorkflowBaseTestCase):
 
     def test_verification_and_rejection_reflected_on_instructor_review_hub(self):
         """Instructor peer review hub reflects both 'Verified by Peer' and 'Rejected by Peer'."""
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         self.client.post(self.verify_url_bob)
 
-        self.client.force_login(self.charlie)
         self.client.post(self.reject_url_charlie)
 
         self.client.force_login(self.instructor)
@@ -337,10 +337,9 @@ class ClaimVerificationSystemReflectionTests(ClaimWorkflowBaseTestCase):
 
     def test_instructor_review_status_filter_reflects_verified_and_rejected(self):
         """Instructor filter '?status=VERIFIED' and '?status=REJECTED' isolate verified and rejected claims."""
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         self.client.post(self.verify_url_bob)
 
-        self.client.force_login(self.charlie)
         self.client.post(self.reject_url_charlie)
 
         self.client.force_login(self.instructor)
@@ -372,37 +371,41 @@ class ClaimVerificationSystemReflectionTests(ClaimWorkflowBaseTestCase):
 class ClaimVerificationSecurityAndDeadlineTests(ClaimWorkflowBaseTestCase):
     """Verifies authorization checks, ownership security, and project deadline controls."""
 
-    def test_student_cannot_verify_another_students_claim_returns_404(self):
-        """Student Charlie cannot verify Bob's claim; request returns 404."""
-        self.client.force_login(self.charlie)
-        resp = self.client.post(self.verify_url_bob)
+    def test_student_cannot_verify_own_claim(self):
+        """Student Bob cannot verify his own claim; request is redirected with error."""
+        self.client.force_login(self.bob)
+        resp = self.client.post(self.verify_url_bob, follow=True)
 
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.status_code, 200)
         self.claim_bob.refresh_from_db()
         self.assertEqual(self.claim_bob.status, 'PENDING')
+        messages = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertIn("Invalid action.", messages)
 
-    def test_student_cannot_reject_another_students_claim_returns_404(self):
-        """Student Charlie cannot reject Bob's claim; request returns 404."""
+    def test_student_cannot_reject_own_claim(self):
+        """Student Charlie cannot reject his own claim; request is redirected with error."""
         self.client.force_login(self.charlie)
-        resp = self.client.post(self.reject_url_bob)
+        resp = self.client.post(self.reject_url_charlie, follow=True)
 
-        self.assertEqual(resp.status_code, 404)
-        self.claim_bob.refresh_from_db()
-        self.assertEqual(self.claim_bob.status, 'PENDING')
+        self.assertEqual(resp.status_code, 200)
+        self.claim_charlie.refresh_from_db()
+        self.assertEqual(self.claim_charlie.status, 'PENDING')
+        messages = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertIn("Invalid action.", messages)
 
-    def test_submitter_cannot_verify_own_tagged_teammate_claim_returns_404(self):
-        """Deliverable submitter Alice cannot verify Bob's claim; request returns 404."""
+    def test_submitter_can_verify_tagged_teammate_claim(self):
+        """Deliverable submitter Alice can verify Bob's claim as a peer teammate."""
         self.client.force_login(self.alice)
-        resp = self.client.post(self.verify_url_bob)
+        resp = self.client.post(self.verify_url_bob, follow=True)
 
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.status_code, 200)
         self.claim_bob.refresh_from_db()
-        self.assertEqual(self.claim_bob.status, 'PENDING')
+        self.assertEqual(self.claim_bob.status, 'VERIFIED')
 
     def test_outsider_student_cannot_verify_claim_returns_404(self):
-        """Non-team member student David cannot verify Bob's claim; request returns 404."""
+        """Non-team member student David cannot verify Bob's claim; request is blocked."""
         self.client.force_login(self.outsider)
-        resp = self.client.post(self.verify_url_bob)
+        resp = self.client.post(self.verify_url_bob, follow=True)
 
         self.assertEqual(resp.status_code, 404)
         self.claim_bob.refresh_from_db()
@@ -435,7 +438,7 @@ class ClaimVerificationSecurityAndDeadlineTests(ClaimWorkflowBaseTestCase):
         )
         self.project.refresh_from_db()
 
-        self.client.force_login(self.bob)
+        self.client.force_login(self.alice)
         resp = self.client.post(self.verify_url_bob, follow=True)
 
         self.claim_bob.refresh_from_db()
@@ -451,7 +454,7 @@ class ClaimVerificationSecurityAndDeadlineTests(ClaimWorkflowBaseTestCase):
         )
         self.project.refresh_from_db()
 
-        self.client.force_login(self.charlie)
+        self.client.force_login(self.alice)
         resp = self.client.post(self.reject_url_charlie, follow=True)
 
         self.claim_charlie.refresh_from_db()
@@ -495,8 +498,8 @@ class ClaimVerificationFullIntegrationTests(ClaimWorkflowBaseTestCase):
     def test_complete_verification_and_rejection_workflow_lifecycle(self):
         """Full lifecycle:
         1. Initial state: Bob and Charlie have PENDING claims.
-        2. Bob visits dashboard -> sees pending claim -> verifies it.
-        3. Charlie visits dashboard -> sees pending claim -> rejects it.
+        2. Alice verifies Bob's claim.
+        3. Alice rejects Charlie's claim.
         4. Both check team progress -> Bob is Verified, Charlie is Rejected.
         5. Instructor inspects review hub -> sees both claims with correct status.
         """
@@ -504,27 +507,29 @@ class ClaimVerificationFullIntegrationTests(ClaimWorkflowBaseTestCase):
         self.assertEqual(self.claim_bob.status, 'PENDING')
         self.assertEqual(self.claim_charlie.status, 'PENDING')
 
-        # Step 2: Bob verifies
-        self.client.force_login(self.bob)
-        r_dash = self.client.get(self.dashboard_url)
-        self.assertIn("Action Required: Pending Verifications", r_dash.content.decode())
+        # Step 2: Alice verifies Bob's claim
+        self.client.force_login(self.alice)
         r_ver = self.client.post(self.verify_url_bob, follow=True)
         self.assertEqual(r_ver.status_code, 200)
         self.claim_bob.refresh_from_db()
         self.assertEqual(self.claim_bob.status, 'VERIFIED')
-        self.assertNotIn("Action Required: Pending Verifications", r_ver.content.decode())
 
-        # Step 3: Charlie rejects
-        self.client.force_login(self.charlie)
-        r_dash_c = self.client.get(self.dashboard_url)
-        self.assertIn("Action Required: Pending Verifications", r_dash_c.content.decode())
+        # Step 3: Alice rejects Charlie's claim
         r_rej = self.client.post(self.reject_url_charlie, follow=True)
         self.assertEqual(r_rej.status_code, 200)
         self.claim_charlie.refresh_from_db()
         self.assertEqual(self.claim_charlie.status, 'REJECTED')
-        self.assertNotIn("Action Required: Pending Verifications", r_rej.content.decode())
 
-        # Step 4: Check Team Progress page
+        # Step 4: Bob and Charlie check dashboard -> pending alert is cleared
+        self.client.force_login(self.bob)
+        r_dash_b = self.client.get(self.dashboard_url)
+        self.assertNotIn("Action Required: Pending Verifications", r_dash_b.content.decode())
+
+        self.client.force_login(self.charlie)
+        r_dash_c = self.client.get(self.dashboard_url)
+        self.assertNotIn("Action Required: Pending Verifications", r_dash_c.content.decode())
+
+        # Step 5: Check Team Progress page
         self.client.force_login(self.alice)
         r_prog = self.client.get(self.progress_url)
         content_prog = r_prog.content.decode('utf-8')
@@ -533,7 +538,7 @@ class ClaimVerificationFullIntegrationTests(ClaimWorkflowBaseTestCase):
         self.assertIn("Charlie Rejector", content_prog)
         self.assertIn("Rejected", content_prog)
 
-        # Step 5: Instructor inspects review hub
+        # Step 6: Instructor inspects review hub
         self.client.force_login(self.instructor)
         r_rev = self.client.get(self.review_url)
         content_rev = r_rev.content.decode('utf-8')
@@ -551,11 +556,11 @@ class ClaimVerificationSeleniumE2ETests(StaticLiveServerTestCase):
     def setUpClass(cls):
         super().setUpClass()
         options = Options()
-        options.add_argument("--headless=new")
+        if os.environ.get("HEADLESS", "0") == "1":
+            options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
-        options.add_argument("--window-size=1920,1080")
-        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--window-size=1280,850")
         options.add_argument("--log-level=3")
 
         service = Service(ChromeDriverManager().install())
@@ -648,6 +653,7 @@ class ClaimVerificationSeleniumE2ETests(StaticLiveServerTestCase):
         )
 
     def _login(self, email, password):
+        self.driver.delete_all_cookies()
         self.driver.get(f"{self.live_server_url}/accounts/login/")
         user_field = self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
         pass_field = self.driver.find_element(By.NAME, "password")
@@ -670,65 +676,58 @@ class ClaimVerificationSeleniumE2ETests(StaticLiveServerTestCase):
 
     def test_e2e_claim_verification_and_rejection_browser_flow(self):
         """Live browser workflow:
-        1. Bob logs in -> sees pending claim banner -> clicks Verify -> badge updates to Verified on team progress.
-        2. Charlie logs in -> sees pending claim banner -> clicks Reject -> badge updates to Rejected on team progress.
+        1. Alice logs in -> visits team progress -> verifies Bob's claim.
+        2. Alice rejects Charlie's claim on team progress.
+        3. Badges update to Verified and Rejected on team progress.
+        4. Bob logs in -> verifies dashboard has no pending notifications.
         """
         dashboard_url = f"{self.live_server_url}/academic/student/dashboard/"
         progress_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/progress/"
 
-        # --- PART 1: BOB VERIFIES HIS CLAIM ---
-        self._login("bob_cv_e2e@test.com", "password123")
-        self.driver.get(dashboard_url)
-
-        # Confirm pending verification alert
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(., 'Pending Verifications')]")))
-        dash_text = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertIn("Microservice Topology Map", dash_text)
-        self.assertIn("Defined Service Mesh & Envoy Routes", dash_text)
-
-        # Click Verify button
-        verify_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Verify')]")))
-        verify_btn.click()
-
-        # Success message displayed and banner cleared
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Verified contribution for')]")))
-        dash_text_after = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertNotIn("Action Required: Pending Verifications", dash_text_after)
-
-        # Check Team Progress page for Verified badge
+        # --- PART 1: ALICE VERIFIES BOB'S CLAIM AND REJECTS CHARLIE'S CLAIM ---
+        self._login("alice_cv_e2e@test.com", "password123")
         self.driver.get(progress_url)
+
+        # Confirm deliverable and claims are rendered
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//h4[contains(text(), 'Microservice Topology Map')]")))
         prog_text = self.driver.find_element(By.TAG_NAME, "body").text
         self.assertIn("Bob Verifier", prog_text)
         self.assertIn("Defined Service Mesh & Envoy Routes", prog_text)
-        self.assertIn("Verified", prog_text)
+        self.assertIn("Charlie Rejector", prog_text)
+        self.assertIn("Created Kafka Event Topology", prog_text)
+
+        # Verify Bob's claim by clicking verify button
+        verify_btn = self.wait.until(EC.element_to_be_clickable(
+            (By.XPATH, f"//form[contains(@action, '/academic/student/claim/{self.claim_bob.pk}/verify/')]//button")
+        ))
+        verify_btn.click()
+
+        # Success message displayed
+        self.wait.until(EC.presence_of_element_located(
+            (By.XPATH, f"//*[contains(text(), 'Verified contribution claim for {self.bob.name}')]")
+        ))
+
+        # Reject Charlie's claim by clicking reject button
+        reject_btn = self.wait.until(EC.element_to_be_clickable(
+            (By.XPATH, f"//form[contains(@action, '/academic/student/claim/{self.claim_charlie.pk}/reject/')]//button")
+        ))
+        reject_btn.click()
+
+        # Success warning message displayed
+        self.wait.until(EC.presence_of_element_located(
+            (By.XPATH, f"//*[contains(text(), 'Rejected contribution claim for {self.charlie.name}')]")
+        ))
+
+        # Check badges on progress page
+        prog_text_updated = self.driver.find_element(By.TAG_NAME, "body").text
+        self.assertIn("Verified", prog_text_updated)
+        self.assertIn("Rejected", prog_text_updated)
 
         self._logout()
 
-        # --- PART 2: CHARLIE REJECTS HIS CLAIM ---
-        self._login("charlie_cv_e2e@test.com", "password123")
+        # --- PART 2: BOB VERIFIES HIS DASHBOARD HAS NO PENDING CLAIMS ---
+        self._login("bob_cv_e2e@test.com", "password123")
         self.driver.get(dashboard_url)
-
-        # Confirm pending verification alert for Charlie
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(., 'Pending Verifications')]")))
-        charlie_dash_text = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertIn("Microservice Topology Map", charlie_dash_text)
-        self.assertIn("Created Kafka Event Topology", charlie_dash_text)
-
-        # Click Reject button
-        reject_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Reject')]")))
-        reject_btn.click()
-
-        # Success message displayed and banner cleared
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Rejected contribution for')]")))
-        charlie_dash_text_after = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertNotIn("Action Required: Pending Verifications", charlie_dash_text_after)
-
-        # Check Team Progress page for Rejected badge
-        self.driver.get(progress_url)
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//h4[contains(text(), 'Microservice Topology Map')]")))
-        prog_text_2 = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertIn("Charlie Rejector", prog_text_2)
-        self.assertIn("Created Kafka Event Topology", prog_text_2)
-        self.assertIn("Rejected", prog_text_2)
+        dash_text = self.driver.find_element(By.TAG_NAME, "body").text
+        self.assertNotIn("Action Required: Pending Verifications", dash_text)
 

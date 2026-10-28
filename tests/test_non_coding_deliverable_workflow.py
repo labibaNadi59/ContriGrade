@@ -340,7 +340,7 @@ class DeliverableSubmissionViewTests(TestCase):
         self.assertIn("submit_deliverable", content)
         self.assertIn("Deliverable Title", content)
         self.assertIn("Resource Link (URL)", content)
-        self.assertIn("No non-coding deliverables have been submitted yet.", content)
+        self.assertIn("No deliverables submitted yet.", content)
 
     def test_authorized_student_get_accessible_without_github_repo(self):
         """Team without linked GitHub repo can still view deliverables section."""
@@ -351,7 +351,7 @@ class DeliverableSubmissionViewTests(TestCase):
         content = resp.content.decode('utf-8')
         self.assertIn("Your team has not linked a GitHub repository yet.", content)
         self.assertIn("Submit Deliverable", content)
-        self.assertIn("Submitted Deliverables", content)
+        self.assertIn("Team Deliverables & Claims", content)
 
     def test_authorized_student_get_lists_existing_deliverables(self):
         """Existing deliverables appear in the list with title, author, and link."""
@@ -379,7 +379,8 @@ class DeliverableSubmissionViewTests(TestCase):
             'submit_deliverable': '1',
             'title': 'Figma UI Wireframes',
             'link': 'https://www.figma.com/file/wireframes-123',
-            'description': 'Mobile and Desktop layouts'
+            'description': 'Mobile and Desktop layouts',
+            'my_contribution_area': 'Mobile and Desktop layouts'
         }
         resp = self.client.post(self.url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
@@ -410,8 +411,7 @@ class DeliverableSubmissionViewTests(TestCase):
         resp = self.client.post(self.url, post_data)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(NonCodingDeliverable.objects.filter(team=self.team).count(), 0)
-        content = resp.content.decode('utf-8')
-        self.assertIn("This field is required.", content)
+        self.assertIn('title', resp.context['deliverable_form'].errors)
 
     def test_post_invalid_bad_url_shows_error_no_db_entry(self):
         """POST with malformed URL fails validation, shows error, does not create DB entry."""
@@ -425,8 +425,7 @@ class DeliverableSubmissionViewTests(TestCase):
         resp = self.client.post(self.url, post_data)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(NonCodingDeliverable.objects.filter(team=self.team).count(), 0)
-        content = resp.content.decode('utf-8')
-        self.assertIn("Enter a valid URL", content)
+        self.assertIn('link', resp.context['deliverable_form'].errors)
 
     def test_post_when_deadline_passed_blocked_with_flash_message(self):
         """When project deadline has expired, POST submission is blocked and no record is created."""
@@ -977,14 +976,15 @@ class DeliverableCompleteLifecycleIntegrationTests(TestCase):
         self.client.force_login(self.student1)
         r = self.client.get(self.progress_url)
         self.assertEqual(r.status_code, 200)
-        self.assertIn("No non-coding deliverables have been submitted yet.", r.content.decode())
+        self.assertIn("No deliverables submitted yet.", r.content.decode())
 
         # Step 2: Student 1 submits Deliverable 1
         r = self.client.post(self.progress_url, {
             'submit_deliverable': '1',
             'title': 'Figma Wireframes v1',
             'link': 'https://figma.com/file/wireframes-1',
-            'description': 'Initial low-fi mockups'
+            'description': 'Initial low-fi mockups',
+            'my_contribution_area': 'Initial low-fi mockups'
         }, follow=True)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(NonCodingDeliverable.objects.filter(team=self.team).count(), 1)
@@ -1005,7 +1005,8 @@ class DeliverableCompleteLifecycleIntegrationTests(TestCase):
             'submit_deliverable': '1',
             'title': 'System Architecture Spec',
             'link': 'https://drive.google.com/file/arch-spec',
-            'description': 'Database ERD and class diagrams'
+            'description': 'Database ERD and class diagrams',
+            'my_contribution_area': 'Database ERD and class diagrams'
         }, follow=True)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(NonCodingDeliverable.objects.filter(team=self.team).count(), 2)
@@ -1181,18 +1182,20 @@ class DeliverableSeleniumE2EWorkflowTests(StaticLiveServerTestCase):
 
         # Verify initial empty state
         body_text = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertIn("No non-coding deliverables have been submitted yet", body_text)
+        self.assertIn("No deliverables submitted yet", body_text)
 
         # Fill Deliverable Form
         title_input = self.driver.find_element(By.NAME, "title")
         link_input = self.driver.find_element(By.NAME, "link")
         desc_input = self.driver.find_element(By.NAME, "description")
+        claim_input = self.driver.find_element(By.NAME, "my_contribution_area")
 
         title_input.send_keys("Figma Prototype E2E")
         link_input.send_keys("https://www.figma.com/design/test-prototype")
         desc_input.send_keys("Interactive mockups and design system components.")
+        claim_input.send_keys("Interactive mockups and design system components.")
 
-        submit_deliverable_btn = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Submit Deliverable')]")
+        submit_deliverable_btn = self.driver.find_element(By.XPATH, "//button[contains(., 'Submit')]")
         submit_deliverable_btn.click()
 
         # Wait for page reload and success message
@@ -1246,6 +1249,6 @@ class DeliverableSeleniumE2EWorkflowTests(StaticLiveServerTestCase):
 
         # Verify empty state is displayed again
         final_body_text = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertIn("No non-coding deliverables have been submitted yet", final_body_text)
+        self.assertIn("No deliverables submitted yet", final_body_text)
         self.assertIn("0 Items", final_body_text)
 

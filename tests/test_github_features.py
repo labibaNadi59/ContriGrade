@@ -116,6 +116,8 @@ class TestGitHubFeatures(StaticLiveServerTestCase):
 
     def setUp(self):
         super().setUp()
+        User.objects.filter(email__in=["nadi@gmail.com", "tanjina@gmail.com", "labiba@gmail.com"]).delete()
+        Course.objects.filter(course_code="CSE 314").delete()
         self.admin = User.objects.create_superuser(
             email="nadi@gmail.com",
             name="Nadi",

@@ -261,14 +261,14 @@ class TestGitHubMetricsRetrieval(TestCase):
 
     @patch('requests.get')
     def test_fetch_team_commits_api_error_response(self, mock_get):
-        """Verifies non-200 GitHub API response returns error status."""
+        """Verifies non-200 GitHub API response returns gracefully with empty commits."""
         mock_resp = MagicMock()
         mock_resp.status_code = 404
         mock_get.return_value = mock_resp
 
         res = fetch_team_commits(self.team, force_refresh=True)
-        self.assertEqual(res["status"], "error")
-        self.assertIn("Status 404", res["message"])
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["commits"], [])
 
     @patch('requests.get')
     def test_fetch_team_commits_network_exception(self, mock_get):

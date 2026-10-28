@@ -256,61 +256,87 @@ class DeliverableTaggingWorkflowTests(TestCase):
         self.progress_url = f"/academic/student/team/{self.team.team_id}/progress/"
 
     def test_submit_deliverable_without_teammate_tags(self):
-        """Submit deliverable without tagging teammates -> deliverable created with 0 contributions."""
+        """Submit deliverable with submitter claim -> deliverable created with 1 auto-claimed contribution."""
         self.client.force_login(self.student_submitter)
         post_data = {
             'submit_deliverable': '1',
             'title': 'Solo Deliverable',
             'link': 'https://figma.com/file/solo',
-            'description': 'Submitted individually'
+            'description': 'Submitted individually',
+            'my_contribution_area': 'Built entire architecture model'
         }
         resp = self.client.post(self.progress_url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
 
         deliverable = NonCodingDeliverable.objects.get(title='Solo Deliverable')
-        self.assertEqual(deliverable.contributions.count(), 0)
+        self.assertEqual(deliverable.contributions.count(), 1)
+        contrib = deliverable.contributions.first()
+        self.assertEqual(contrib.student, self.student_submitter)
+        self.assertEqual(contrib.contribution_area, 'Built entire architecture model')
+        self.assertEqual(contrib.status, 'PENDING')
 
         messages = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any("Deliverable submitted successfully." in m for m in messages))
+        self.assertTrue(any("Deliverable and personal contribution claim submitted successfully." in m for m in messages))
 
     def test_submit_deliverable_with_single_teammate_tag(self):
-        """Submit deliverable with 1 teammate tagged -> DeliverableContribution created with status PENDING."""
+        """Submit deliverable and teammate claims contribution -> DeliverableContribution created with status PENDING."""
         self.client.force_login(self.student_submitter)
         post_data = {
             'submit_deliverable': '1',
             'title': 'Figma Wireframes',
             'link': 'https://figma.com/file/wireframes',
             'description': 'Collaborative design',
-            'teammate_id[]': [str(self.student_teammate1.pk)],
-            'contribution_area[]': ['Designed Mobile UI Flow']
+            'my_contribution_area': 'Created UI Wireframe Drafts'
         }
         resp = self.client.post(self.progress_url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
 
         deliverable = NonCodingDeliverable.objects.get(title='Figma Wireframes')
-        self.assertEqual(deliverable.contributions.count(), 1)
 
-        claim = deliverable.contributions.first()
-        self.assertEqual(claim.student, self.student_teammate1)
+        # Teammate adds their contribution claim
+        self.client.force_login(self.student_teammate1)
+        resp_claim = self.client.post(self.progress_url, {
+            'add_claim': '1',
+            'deliverable_id': deliverable.pk,
+            'contribution_area': 'Designed Mobile UI Flow'
+        }, follow=True)
+        self.assertEqual(resp_claim.status_code, 200)
+
+        self.assertEqual(deliverable.contributions.count(), 2)
+        claim = deliverable.contributions.get(student=self.student_teammate1)
         self.assertEqual(claim.contribution_area, 'Designed Mobile UI Flow')
         self.assertEqual(claim.status, 'PENDING')
 
     def test_submit_deliverable_with_multiple_teammates_tagged(self):
-        """Submit deliverable tagging multiple teammates with distinct contribution areas."""
+        """Submit deliverable and multiple teammates claim distinct contribution areas."""
         self.client.force_login(self.student_submitter)
         post_data = {
             'submit_deliverable': '1',
             'title': 'SRS Documentation',
             'link': 'https://docs.google.com/document/srs',
             'description': 'Full team SRS',
-            'teammate_id[]': [str(self.student_teammate1.pk), str(self.student_teammate2.pk)],
-            'contribution_area[]': ['Auth & Security Requirements', 'Database Schema Modeling']
+            'my_contribution_area': 'Full team SRS coordination'
         }
         resp = self.client.post(self.progress_url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
 
         deliverable = NonCodingDeliverable.objects.get(title='SRS Documentation')
-        self.assertEqual(deliverable.contributions.count(), 2)
+
+        self.client.force_login(self.student_teammate1)
+        self.client.post(self.progress_url, {
+            'add_claim': '1',
+            'deliverable_id': deliverable.pk,
+            'contribution_area': 'Auth & Security Requirements'
+        }, follow=True)
+
+        self.client.force_login(self.student_teammate2)
+        self.client.post(self.progress_url, {
+            'add_claim': '1',
+            'deliverable_id': deliverable.pk,
+            'contribution_area': 'Database Schema Modeling'
+        }, follow=True)
+
+        self.assertEqual(deliverable.contributions.count(), 3)
 
         claim1 = deliverable.contributions.get(student=self.student_teammate1)
         self.assertEqual(claim1.contribution_area, 'Auth & Security Requirements')
@@ -321,33 +347,20 @@ class DeliverableTaggingWorkflowTests(TestCase):
         self.assertEqual(claim2.status, 'PENDING')
 
     def test_security_cannot_tag_student_outside_team(self):
-        """Security: A student not enrolled in this team cannot be tagged in a contribution claim."""
-        self.client.force_login(self.student_submitter)
-        post_data = {
-            'submit_deliverable': '1',
-            'title': 'Spoofed Deliverable',
-            'link': 'https://example.com/spoof',
-            'description': 'Attempting to tag outside user',
-            'teammate_id[]': [str(self.student_outsider.pk)],
-            'contribution_area[]': ['Fake Contribution']
-        }
-        resp = self.client.post(self.progress_url, post_data, follow=True)
-        self.assertEqual(resp.status_code, 200)
-
-        deliverable = NonCodingDeliverable.objects.get(title='Spoofed Deliverable')
-        # Outside student must be excluded by backend security check
-        self.assertEqual(deliverable.contributions.count(), 0)
+        """Security: A student not enrolled in this team cannot access progress or add claims."""
+        self.client.force_login(self.student_outsider)
+        resp = self.client.get(self.progress_url)
+        self.assertEqual(resp.status_code, 404)
 
     def test_tagging_with_empty_contribution_area_rejected(self):
-        """If a teammate is selected but the contribution area is empty, submission is rejected with an error message."""
+        """If contribution area is empty, submission is rejected with an error message."""
         self.client.force_login(self.student_submitter)
         post_data = {
             'submit_deliverable': '1',
             'title': 'Incomplete Tag Deliverable',
             'link': 'https://example.com/incomplete',
             'description': 'Empty area',
-            'teammate_id[]': [str(self.student_teammate1.pk)],
-            'contribution_area[]': ['   ']
+            'my_contribution_area': '   '
         }
         resp = self.client.post(self.progress_url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
@@ -355,43 +368,36 @@ class DeliverableTaggingWorkflowTests(TestCase):
         # Deliverable must NOT be created due to strict validation
         self.assertFalse(NonCodingDeliverable.objects.filter(title='Incomplete Tag Deliverable').exists())
         messages = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any("Submission failed: You must describe the contribution area" in m for m in messages))
+        self.assertTrue(any("You must describe your personal contribution to this deliverable." in m for m in messages))
 
     def test_tagging_with_no_teammate_selected_submits_cleanly(self):
-        """When the empty option is selected in the teammate dropdown, deliverable is submitted cleanly without contributions."""
+        """Submit deliverable with personal contribution claim submits cleanly."""
         self.client.force_login(self.student_submitter)
         post_data = {
             'submit_deliverable': '1',
             'title': 'No Tag Deliverable',
             'link': 'https://example.com/notag',
-            'description': 'No teammate tagged',
-            'teammate_id[]': [''],
-            'contribution_area[]': ['']
+            'description': 'Personal claim',
+            'my_contribution_area': 'Built base setup'
         }
         resp = self.client.post(self.progress_url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
         deliverable = NonCodingDeliverable.objects.get(title='No Tag Deliverable')
-        self.assertEqual(deliverable.contributions.count(), 0)
+        self.assertEqual(deliverable.contributions.count(), 1)
 
     def test_tagging_with_invalid_id_ignored_gracefully(self):
-        """Non-numeric teammate ID is ignored gracefully without server error."""
+        """Invalid deliverable ID in add_claim returns 404 gracefully."""
         self.client.force_login(self.student_submitter)
         post_data = {
-            'submit_deliverable': '1',
-            'title': 'Bad ID Deliverable',
-            'link': 'https://example.com/bad-id',
-            'description': 'Bad teammate id',
-            'teammate_id[]': ['invalid_id_string'],
-            'contribution_area[]': ['Some area']
+            'add_claim': '1',
+            'deliverable_id': '999999',
+            'contribution_area': 'Some area'
         }
         resp = self.client.post(self.progress_url, post_data, follow=True)
-        self.assertEqual(resp.status_code, 200)
-
-        deliverable = NonCodingDeliverable.objects.get(title='Bad ID Deliverable')
-        self.assertEqual(deliverable.contributions.count(), 0)
+        self.assertEqual(resp.status_code, 404)
 
     def test_submit_and_tag_when_deadline_passed_blocked(self):
-        """When project deadline has expired, submission and tagging are blocked."""
+        """When project deadline has expired, submission and claims are blocked."""
         Project.objects.filter(pk=self.project.pk).update(
             deadline=timezone.now() - timedelta(hours=1)
         )
@@ -400,13 +406,14 @@ class DeliverableTaggingWorkflowTests(TestCase):
             'submit_deliverable': '1',
             'title': 'Late Tagged Deliverable',
             'link': 'https://example.com/late',
-            'teammate_id[]': [str(self.student_teammate1.pk)],
-            'contribution_area[]': ['Late Area']
+            'my_contribution_area': 'Late Area'
         }
         resp = self.client.post(self.progress_url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(NonCodingDeliverable.objects.filter(title='Late Tagged Deliverable').count(), 0)
         self.assertEqual(DeliverableContribution.objects.count(), 0)
+        messages = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Submissions locked. The deadline" in m for m in messages))
 
 
 # =====================================================================
@@ -653,32 +660,31 @@ class VerifyClaimViewTests(TestCase):
 
     def test_verify_non_existent_claim_returns_404(self):
         """Attempting to verify non-existent claim ID returns 404."""
-        self.client.force_login(self.student_tagged)
+        self.client.force_login(self.student_submitter)
         resp = self.client.post("/academic/student/claim/99999/verify/")
         self.assertEqual(resp.status_code, 404)
 
     def test_security_cannot_verify_another_students_claim(self):
-        """Student cannot verify a claim that belongs to another student -> returns 404."""
+        """Outsider student cannot verify claim -> redirects with error and status remains PENDING."""
         self.client.force_login(self.student_other)
-        resp = self.client.post(self.verify_url)
+        resp = self.client.post(self.verify_url, follow=True)
         self.assertEqual(resp.status_code, 404)
 
         self.claim.refresh_from_db()
         self.assertEqual(self.claim.status, "PENDING")
 
     def test_verify_get_request_does_not_change_status(self):
-        """GET request redirects to dashboard without modifying claim status."""
-        self.client.force_login(self.student_tagged)
+        """GET request redirects without modifying claim status."""
+        self.client.force_login(self.student_submitter)
         resp = self.client.get(self.verify_url)
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("/academic/student/", resp.url)
 
         self.claim.refresh_from_db()
         self.assertEqual(self.claim.status, "PENDING")
 
     def test_verify_post_when_deadline_active_updates_status_to_verified(self):
-        """POST request when project active sets status to VERIFIED, adds success flash message, redirects."""
-        self.client.force_login(self.student_tagged)
+        """POST request by teammate when project active sets status to VERIFIED, adds success flash message."""
+        self.client.force_login(self.student_submitter)
         resp = self.client.post(self.verify_url, follow=True)
         self.assertEqual(resp.status_code, 200)
 
@@ -686,14 +692,14 @@ class VerifyClaimViewTests(TestCase):
         self.assertEqual(self.claim.status, "VERIFIED")
 
         messages = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any(f"Verified contribution for '{self.deliverable.title}'." in m for m in messages))
+        self.assertTrue(any(f"Verified contribution claim for {self.student_tagged.name}." in m for m in messages))
 
     def test_verify_post_when_deadline_passed_blocked(self):
         """POST request when deadline has passed does not verify; shows error message."""
         Project.objects.filter(pk=self.project.pk).update(
             deadline=timezone.now() - timedelta(hours=1)
         )
-        self.client.force_login(self.student_tagged)
+        self.client.force_login(self.student_submitter)
         resp = self.client.post(self.verify_url, follow=True)
         self.assertEqual(resp.status_code, 200)
 
@@ -797,32 +803,31 @@ class RejectClaimViewTests(TestCase):
 
     def test_reject_non_existent_claim_returns_404(self):
         """Attempting to reject non-existent claim ID returns 404."""
-        self.client.force_login(self.student_tagged)
+        self.client.force_login(self.student_submitter)
         resp = self.client.post("/academic/student/claim/99999/reject/")
         self.assertEqual(resp.status_code, 404)
 
     def test_security_cannot_reject_another_students_claim(self):
-        """Student cannot reject a claim that belongs to another student -> returns 404."""
+        """Outsider student cannot reject claim -> redirects with error and status remains PENDING."""
         self.client.force_login(self.student_other)
-        resp = self.client.post(self.reject_url)
+        resp = self.client.post(self.reject_url, follow=True)
         self.assertEqual(resp.status_code, 404)
 
         self.claim.refresh_from_db()
         self.assertEqual(self.claim.status, "PENDING")
 
     def test_reject_get_request_does_not_change_status(self):
-        """GET request redirects to dashboard without modifying claim status."""
-        self.client.force_login(self.student_tagged)
+        """GET request redirects without modifying claim status."""
+        self.client.force_login(self.student_submitter)
         resp = self.client.get(self.reject_url)
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("/academic/student/", resp.url)
 
         self.claim.refresh_from_db()
         self.assertEqual(self.claim.status, "PENDING")
 
     def test_reject_post_when_deadline_active_updates_status_to_rejected(self):
-        """POST request when project active sets status to REJECTED, adds flash message, redirects."""
-        self.client.force_login(self.student_tagged)
+        """POST request by teammate when project active sets status to REJECTED, adds flash message."""
+        self.client.force_login(self.student_submitter)
         resp = self.client.post(self.reject_url, follow=True)
         self.assertEqual(resp.status_code, 200)
 
@@ -830,14 +835,14 @@ class RejectClaimViewTests(TestCase):
         self.assertEqual(self.claim.status, "REJECTED")
 
         messages = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any(f"Rejected contribution for '{self.deliverable.title}'." in m for m in messages))
+        self.assertTrue(any(f"Rejected contribution claim for {self.student_tagged.name}." in m for m in messages))
 
     def test_reject_post_when_deadline_passed_blocked(self):
         """POST request when deadline has passed does not reject; shows error message."""
         Project.objects.filter(pk=self.project.pk).update(
             deadline=timezone.now() - timedelta(hours=1)
         )
-        self.client.force_login(self.student_tagged)
+        self.client.force_login(self.student_submitter)
         resp = self.client.post(self.reject_url, follow=True)
         self.assertEqual(resp.status_code, 200)
 
@@ -928,7 +933,7 @@ class SharedContributionsProgressUITests(TestCase):
         self.assertEqual(resp.status_code, 200)
         content = resp.content.decode('utf-8')
 
-        self.assertIn("Tagged Contributions:", content)
+        self.assertIn("Contribution Claims:", content)
         self.assertIn("Bob Teammate", content)
         self.assertIn("Created UI Wireframe Drafts", content)
         self.assertIn("Pending", content)
@@ -969,23 +974,25 @@ class SharedContributionsProgressUITests(TestCase):
         self.assertIn("fa-xmark", content)
 
     def test_deliverable_without_contributions_omits_tagged_block(self):
-        """If deliverable has no contributions, Tagged Contributions block is omitted."""
+        """If deliverable has no contributions, no contribution items are rendered."""
         self.client.force_login(self.student1)
         resp = self.client.get(self.progress_url)
         self.assertEqual(resp.status_code, 200)
         content = resp.content.decode('utf-8')
 
-        self.assertNotIn("Tagged Contributions:", content)
+        self.assertNotIn("Bob Teammate", content)
+        self.assertNotIn("fa-clock", content)
 
     def test_tag_dropdown_lists_teammates_excluding_current_user(self):
-        """In the submission form, teammate dropdown lists other team members and excludes current user."""
+        """Deliverable card renders Add My Claim form for teammates."""
         self.client.force_login(self.student1)
         resp = self.client.get(self.progress_url)
         self.assertEqual(resp.status_code, 200)
         content = resp.content.decode('utf-8')
 
-        self.assertIn(f'<option value="{self.student2.pk}">{self.student2.name}</option>', content)
-        self.assertNotIn(f'<option value="{self.student1.pk}">{self.student1.name}</option>', content)
+        self.assertIn("Add My Claim", content)
+        self.assertIn(f"claim-form-{self.deliverable.pk}", content)
+        self.assertIn("add_claim", content)
 
 
 # =====================================================================
@@ -1069,29 +1076,48 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         self.dashboard_url = "/academic/student/dashboard/"
 
     def test_full_shared_contribution_workflow_lifecycle(self):
-        # Step 1: Submitter submits deliverable tagging Teammate A and Teammate B
+        # Step 1: Submitter submits deliverable with my_contribution_area
         self.client.force_login(self.submitter)
         r = self.client.post(self.progress_url, {
             'submit_deliverable': '1',
             'title': 'Collaborative System Specification',
             'link': 'https://drive.google.com/spec-file',
             'description': 'Full team deliverable spec',
-            'teammate_id[]': [str(self.teammate_a.pk), str(self.teammate_b.pk)],
-            'contribution_area[]': ['Database Schema & ERD', 'Frontend Prototype Mockups']
+            'my_contribution_area': 'Full team deliverable spec'
         }, follow=True)
         self.assertEqual(r.status_code, 200)
 
         deliverable = NonCodingDeliverable.objects.get(title='Collaborative System Specification')
-        self.assertEqual(deliverable.contributions.count(), 2)
+
+        # Teammate A adds their claim
+        self.client.force_login(self.teammate_a)
+        r = self.client.post(self.progress_url, {
+            'add_claim': '1',
+            'deliverable_id': deliverable.pk,
+            'contribution_area': 'Database Schema & ERD'
+        }, follow=True)
+        self.assertEqual(r.status_code, 200)
+
+        # Teammate B adds their claim
+        self.client.force_login(self.teammate_b)
+        r = self.client.post(self.progress_url, {
+            'add_claim': '1',
+            'deliverable_id': deliverable.pk,
+            'contribution_area': 'Frontend Prototype Mockups'
+        }, follow=True)
+        self.assertEqual(r.status_code, 200)
+
+        self.assertEqual(deliverable.contributions.count(), 3)
         claim_a = deliverable.contributions.get(student=self.teammate_a)
         claim_b = deliverable.contributions.get(student=self.teammate_b)
         self.assertEqual(claim_a.status, 'PENDING')
         self.assertEqual(claim_b.status, 'PENDING')
 
         # Step 2: Verify team progress shows both as Pending
+        self.client.force_login(self.submitter)
         r = self.client.get(self.progress_url)
         content_progress = r.content.decode()
-        self.assertIn("Tagged Contributions:", content_progress)
+        self.assertIn("Contribution Claims:", content_progress)
         self.assertIn("Bob Verifier", content_progress)
         self.assertIn("Charlie Rejector", content_progress)
         self.assertIn("Pending", content_progress)
@@ -1104,7 +1130,8 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         self.assertIn("Database Schema", content_dash_a)
         self.assertIn("Collaborative System Specification", content_dash_a)
 
-        # Step 4: Teammate A verifies their claim
+        # Step 4: Submitter verifies Teammate A's claim
+        self.client.force_login(self.submitter)
         verify_url_a = f"/academic/student/claim/{claim_a.pk}/verify/"
         r = self.client.post(verify_url_a, follow=True)
         self.assertEqual(r.status_code, 200)
@@ -1112,6 +1139,7 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         self.assertEqual(claim_a.status, 'VERIFIED')
 
         # Step 5: Teammate A's dashboard now has 0 pending claims
+        self.client.force_login(self.teammate_a)
         r = self.client.get(self.dashboard_url)
         self.assertNotIn("Action Required: Pending Verifications", r.content.decode())
 
@@ -1122,7 +1150,8 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         self.assertIn("Action Required: Pending Verifications", content_dash_b)
         self.assertIn("Frontend Prototype Mockups", content_dash_b)
 
-        # Step 7: Teammate B rejects their claim
+        # Step 7: Submitter rejects Teammate B's claim
+        self.client.force_login(self.submitter)
         reject_url_b = f"/academic/student/claim/{claim_b.pk}/reject/"
         r = self.client.post(reject_url_b, follow=True)
         self.assertEqual(r.status_code, 200)
@@ -1130,6 +1159,7 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         self.assertEqual(claim_b.status, 'REJECTED')
 
         # Step 8: Teammate B's dashboard now has 0 pending claims
+        self.client.force_login(self.teammate_b)
         r = self.client.get(self.dashboard_url)
         self.assertNotIn("Action Required: Pending Verifications", r.content.decode())
 
@@ -1153,7 +1183,7 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         # Step 11: Verification/Rejection after deadline blocked
         claim_a.status = 'PENDING'
         claim_a.save()
-        self.client.force_login(self.teammate_a)
+        self.client.force_login(self.submitter)
         r = self.client.post(verify_url_a, follow=True)
         claim_a.refresh_from_db()
         self.assertEqual(claim_a.status, 'PENDING')
@@ -1359,11 +1389,11 @@ class SharedContributionSeleniumE2ETests(StaticLiveServerTestCase):
     def setUpClass(cls):
         super().setUpClass()
         options = Options()
-        options.add_argument("--headless=new")
+        if os.environ.get("HEADLESS", "0") == "1":
+            options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
-        options.add_argument("--window-size=1920,1080")
-        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--window-size=1280,850")
         options.add_argument("--log-level=3")
 
         service = Service(ChromeDriverManager().install())
@@ -1455,15 +1485,12 @@ class SharedContributionSeleniumE2ETests(StaticLiveServerTestCase):
         E2E Browser Test:
         1. Login as Alice (Submitter).
         2. Navigate to Team Progress.
-        3. Fill in Deliverable form (Title, Link, Description).
-        4. Select Bob from Teammate dropdown and type contribution area.
-        5. Submit Deliverable -> verify listed with Bob's 'Pending' badge.
-        6. Logout Alice.
-        7. Login as Bob (Contributor).
-        8. Bob lands on Dashboard -> sees 'Action Required: Pending Verifications' alert box.
-        9. Bob clicks 'Verify' button.
-        10. Verify success flash message appears and alert box is cleared.
-        11. Navigate to Team Progress page -> verify Bob's badge is now 'Verified'.
+        3. Fill in Deliverable form and claim area.
+        4. Submit Deliverable -> verify listed with Alice's 'Pending' badge.
+        5. Logout Alice.
+        6. Login as Bob (Contributor).
+        7. Bob visits Team Progress -> Bob verifies Alice's claim and adds his own claim.
+        8. Verify Alice's badge updates to 'Verified' and Bob's claim appears.
         """
         # 1. Login as Alice
         self._login("alice_se2e@test.com", "password123")
@@ -1476,63 +1503,54 @@ class SharedContributionSeleniumE2ETests(StaticLiveServerTestCase):
         # 3. Fill Deliverable form
         self.driver.find_element(By.NAME, "title").send_keys("Architecture Specification E2E")
         self.driver.find_element(By.NAME, "link").send_keys("https://figma.com/arch-e2e")
-        self.driver.find_element(By.NAME, "description").send_keys("Architecture doc with tagged teammate")
+        self.driver.find_element(By.NAME, "description").send_keys("Architecture doc with personal claim")
+        self.driver.find_element(By.NAME, "my_contribution_area").send_keys("Designed Database Schemas & Migrations")
 
-        # 4. Tag Bob from dropdown
-        teammate_select_el = self.driver.find_element(By.NAME, "teammate_id[]")
-        select = Select(teammate_select_el)
-        select.select_by_value(str(self.student_teammate.pk))
-
-        area_input = self.driver.find_element(By.NAME, "contribution_area[]")
-        area_input.send_keys("Designed Database Schemas & Migrations")
-
-        # 5. Submit Deliverable
-        submit_btn = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Submit Deliverable')]")
+        # 4. Submit Deliverable
+        submit_btn = self.driver.find_element(By.XPATH, "//button[contains(., 'Submit & Claim')]")
         submit_btn.click()
 
         # Wait for page reload and success message
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Deliverable submitted successfully.')]")))
+        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Deliverable and personal contribution claim submitted successfully.')]")))
 
-        # Verify listed with Bob and Pending badge
+        # Verify listed with Alice and Pending badge
         body_text = self.driver.find_element(By.TAG_NAME, "body").text
         self.assertIn("Architecture Specification E2E", body_text)
-        self.assertIn("Bob Contributor", body_text)
+        self.assertIn("Alice Submitter", body_text)
         self.assertIn("Designed Database Schemas & Migrations", body_text)
         self.assertIn("Pending", body_text)
 
-        # 6. Logout Alice
+        # 5. Logout Alice
         self._logout()
 
-        # 7. Login as Bob
+        # 6. Login as Bob
         self._login("bob_se2e@test.com", "password123")
 
-        # 8. Check Dashboard for Pending Claim alert box
-        dashboard_url = f"{self.live_server_url}/academic/student/dashboard/"
-        self.driver.get(dashboard_url)
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(., 'Pending Verifications')]")))
-
-        dash_text = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertIn("Alice Submitter", dash_text)
-        self.assertIn("Architecture Specification E2E", dash_text)
-        self.assertIn("Designed Database Schemas & Migrations", dash_text)
-
-        # 9. Bob clicks Verify button
-        verify_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Verify')]")))
-        verify_btn.click()
-
-        # 10. Verify success flash message appears
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Verified contribution for')]")))
-
-        # Alert box is cleared
-        dash_text_after = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertNotIn("Action Required: Pending Verifications", dash_text_after)
-
-        # 11. Navigate to Team Progress
+        # 7. Bob navigates to Team Progress
         self.driver.get(progress_url)
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//h4[contains(text(), 'Architecture Specification E2E')]")))
 
-        # 12. Verify Bob's badge is now Verified
+        # Bob verifies Alice's claim
+        verify_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Verify this claim']")))
+        verify_btn.click()
+
+        # Success message displayed
+        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Verified contribution claim for Alice Submitter')]")))
+
+        # Confirm Verified badge on progress page
         progress_text = self.driver.find_element(By.TAG_NAME, "body").text
-        self.assertIn("Bob Contributor", progress_text)
-        self.assertIn("Designed Database Schemas & Migrations", progress_text)
         self.assertIn("Verified", progress_text)
+
+        # Bob adds his own claim
+        add_claim_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Add My Claim')]")))
+        add_claim_btn.click()
+
+        claim_input = self.wait.until(EC.visibility_of_element_located((By.NAME, "contribution_area")))
+        claim_input.send_keys("Created API Endpoints")
+        claim_submit = self.driver.find_element(By.XPATH, "//button[text()='Claim']")
+        claim_submit.click()
+
+        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Your contribution claim has been submitted for peer verification.')]")))
+        updated_text = self.driver.find_element(By.TAG_NAME, "body").text
+        self.assertIn("Bob Contributor", updated_text)
+        self.assertIn("Created API Endpoints", updated_text)
