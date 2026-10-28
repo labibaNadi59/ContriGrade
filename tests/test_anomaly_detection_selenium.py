@@ -212,7 +212,7 @@ class AnomalyDetectionSeleniumTests(StaticLiveServerTestCase):
 
         body_text = self.driver.find_element(By.TAG_NAME, "body").text
         self.assertIn("Detected Contribution Anomalies (1)", body_text)
-        self.assertIn("Review Recommended", body_text)
+        self.assertIn("Verify in Viva", body_text)
         self.assertIn("Peer Rating Deficit (High Output vs. Low Peer Score)", body_text)
         self.assertIn("cross-pillar mismatch", body_text.lower())
 

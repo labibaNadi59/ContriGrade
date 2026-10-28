@@ -16,6 +16,7 @@ import os
 import sys
 import time
 import unittest
+import requests
 import uuid
 
 # Ensure project root is in sys.path
@@ -25,6 +26,8 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
 django.setup()
 
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.test import override_settings
 from django.db import transaction
 from academic.models import Course, CourseSection, Project
 from accounts.models import User
@@ -77,7 +80,8 @@ def wait_for_text_in_element(driver, by, value, expected_text, timeout=15):
     raise TimeoutError(f"Text '{expected_text}' not found in {by}={value} within {timeout}s")
 
 
-class TestInstructorAssignmentSelenium(unittest.TestCase):
+@override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+class TestInstructorAssignmentSelenium(StaticLiveServerTestCase):
     """
     Selenium test suite for instructor-to-course assignment,
     validation, and multi-role display verification.
@@ -85,89 +89,70 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Ensure baseline test data exists for coordinators, instructors, courses, and sections."""
-        # Ensure test coordinator exists
-        cls.coord_email = "alok@gmail.com"
-        cls.password = "123"
-        cls.coordinator = User.objects.filter(email=cls.coord_email).first()
-        if not cls.coordinator:
-            cls.coordinator = User.objects.create_user(
-                email=cls.coord_email,
-                name="alok",
-                role=User.Role.COORDINATOR,
-                password=cls.password
-            )
+        super().setUpClass()
+        cls.driver = get_driver(headless=True)
+        cls.wait = WebDriverWait(cls.driver, 15)
 
-        # Ensure instructors exist
-        cls.instructor_1 = User.objects.filter(role=User.Role.INSTRUCTOR).first()
-        cls.instructor_2 = User.objects.filter(role=User.Role.INSTRUCTOR).exclude(user_id=cls.instructor_1.user_id if cls.instructor_1 else None).first()
-        if not cls.instructor_1:
-            cls.instructor_1 = User.objects.create_user(
-                email="test_inst1@example.com",
-                name="Test Instructor 1",
-                role=User.Role.INSTRUCTOR,
-                password=cls.password
-            )
-        if not cls.instructor_2:
-            cls.instructor_2 = User.objects.create_user(
-                email="test_inst2@example.com",
-                name="Test Instructor 2",
-                role=User.Role.INSTRUCTOR,
-                password=cls.password
-            )
-
-        # Ensure student exists
-        cls.student = User.objects.filter(role=User.Role.STUDENT).first()
-        if not cls.student:
-            cls.student = User.objects.create_user(
-                email="test_student@example.com",
-                name="Test Student",
-                role=User.Role.STUDENT,
-                password=cls.password
-            )
-
-        # Ensure a test course exists
-        cls.course = Course.objects.first()
-        if not cls.course:
-            cls.course = Course.objects.create(
-                course_code="CSE 999",
-                course_name="Software Testing Lab",
-                coordinator=cls.coordinator
-            )
-
-        # Ensure at least two test sections exist
-        cls.section_1 = CourseSection.objects.filter(course=cls.course).first()
-        if not cls.section_1:
-            cls.section_1 = CourseSection.objects.create(
-                course=cls.course,
-                section_name="Section Alpha",
-                instructor=cls.instructor_1
-            )
-
-        cls.section_2 = CourseSection.objects.filter(course=cls.course).exclude(section_id=cls.section_1.section_id).first()
-        if not cls.section_2:
-            cls.section_2 = CourseSection.objects.create(
-                course=cls.course,
-                section_name="Section Beta",
-                instructor=None
-            )
-
-        # Enforce student enrollment in section_1
-        cls.section_1.students.add(cls.student)
-
-    def setUp(self):
-        self.driver = get_driver(headless=True)
-        self.wait = WebDriverWait(self.driver, 15)
+    @classmethod
+    def tearDownClass(cls):
+        if cls.driver:
+            cls.driver.quit()
+        super().tearDownClass()
 
     def tearDown(self):
-        if self.driver:
-            self.driver.quit()
+        super().tearDown()
+        self.driver.delete_all_cookies()
+
+    def setUp(self):
+        super().setUp()
+        self.coord_email = "alok@gmail.com"
+        self.password = "123"
+        self.coordinator = User.objects.create_user(
+            email=self.coord_email,
+            name="alok",
+            role=User.Role.COORDINATOR,
+            password=self.password
+        )
+        self.instructor_1 = User.objects.create_user(
+            email="test_inst1@example.com",
+            name="Test Instructor 1",
+            role=User.Role.INSTRUCTOR,
+            password=self.password
+        )
+        self.instructor_2 = User.objects.create_user(
+            email="test_inst2@example.com",
+            name="Test Instructor 2",
+            role=User.Role.INSTRUCTOR,
+            password=self.password
+        )
+        self.student = User.objects.create_user(
+            email="test_student@example.com",
+            name="Test Student",
+            role=User.Role.STUDENT,
+            password=self.password
+        )
+        self.course = Course.objects.create(
+            course_code="CSE 999",
+            course_name="Software Testing Lab",
+            coordinator=self.coordinator
+        )
+        self.section_1 = CourseSection.objects.create(
+            course=self.course,
+            section_name="Section Alpha",
+            instructor=self.instructor_1
+        )
+        self.section_2 = CourseSection.objects.create(
+            course=self.course,
+            section_name="Section Beta",
+            instructor=None
+        )
+        self.section_1.students.add(self.student)
 
     def _login(self, email, password=None):
         """Helper to log in a user and wait for redirection."""
         if password is None:
             password = self.password
-        self.driver.get(f"{BASE_URL}/accounts/login/")
+        self.driver.get(f"{self.live_server_url}/accounts/login/")
         user_field = wait_for_element(self.driver, By.NAME, "username")
         pass_field = self.driver.find_element(By.NAME, "password")
         submit_btn = self.driver.find_element(By.XPATH, "//button[@type='submit']")
@@ -192,9 +177,9 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         print("\n[TC-01] Testing Coordinator assigns instructor to section via Dashboard...")
         self._login(self.coord_email)
 
-        coord_url = f"{BASE_URL}/academic/coordinator/dashboard/"
+        coord_url = f"{self.live_server_url}/academic/coordinator/sections/"
         self.driver.get(coord_url)
-        self.wait.until(lambda d: "/coordinator/dashboard/" in d.current_url)
+        self.wait.until(lambda d: "/create/" not in d.current_url and "/coordinator/sections/" in d.current_url)
 
         # Find the form for section_2
         form_xpath = f"//form[contains(@action, '/academic/coordinator/sections/{self.section_2.section_id}/assign/')]"
@@ -246,7 +231,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         self._login(self.coord_email)
 
         # 1. Check Coordinator Dashboard select options
-        coord_url = f"{BASE_URL}/academic/coordinator/dashboard/"
+        coord_url = f"{self.live_server_url}/academic/coordinator/sections/"
         self.driver.get(coord_url)
         form_xpath = f"//form[contains(@action, '/academic/coordinator/sections/{self.section_1.section_id}/assign/')]"
         section_form = wait_for_element(self.driver, By.XPATH, form_xpath)
@@ -258,7 +243,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         print(f"  -> Available options in Dashboard dropdown: {option_texts}")
 
         # Ensure empty/unassigned option exists
-        self.assertIn("-- Select Instructor --", option_texts)
+        self.assertIn("-- Unassigned (Select Instructor) --", option_texts)
 
         # Ensure all active instructors are present
         all_instructors = User.objects.filter(role=User.Role.INSTRUCTOR)
@@ -276,7 +261,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
             )
 
         # 2. Check Section Create page select options as well
-        create_url = f"{BASE_URL}/academic/coordinator/sections/create/"
+        create_url = f"{self.live_server_url}/academic/coordinator/sections/create/"
         self.driver.get(create_url)
         inst_create_select = Select(wait_for_element(self.driver, By.ID, "id_instructor"))
         create_option_values = [opt.get_attribute("value") for opt in inst_create_select.options]
@@ -304,7 +289,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         self.section_1.save()
 
         self._login(self.coord_email)
-        coord_url = f"{BASE_URL}/academic/coordinator/dashboard/"
+        coord_url = f"{self.live_server_url}/academic/coordinator/sections/"
         self.driver.get(coord_url)
 
         form_xpath = f"//form[contains(@action, '/academic/coordinator/sections/{self.section_1.section_id}/assign/')]"
@@ -325,7 +310,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         updated_select = Select(reloaded_form.find_element(By.NAME, "instructor"))
         self.assertEqual(
             updated_select.first_selected_option.text.strip(),
-            "-- Select Instructor --",
+            "-- Unassigned (Select Instructor) --",
             "Expected dropdown to display '-- Select Instructor --' as selected"
         )
         print("  -> UI Display Verified: '-- Select Instructor --' is displayed.")
@@ -352,7 +337,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         new_section_name = f"Sec-{unique_suffix}"
 
         self._login(self.coord_email)
-        create_url = f"{BASE_URL}/academic/coordinator/sections/create/"
+        create_url = f"{self.live_server_url}/academic/coordinator/sections/create/"
         self.driver.get(create_url)
 
         wait_for_element(self.driver, By.ID, "id_course")
@@ -371,7 +356,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         save_btn.click()
 
         # Should redirect to Coordinator Dashboard
-        self.wait.until(lambda d: "/coordinator/dashboard/" in d.current_url)
+        self.wait.until(lambda d: "/create/" not in d.current_url and "/coordinator/sections/" in d.current_url)
 
         # Verification 1 (Display): New section appears under Course Sections & Instructors
         body_text = self.driver.find_element(By.TAG_NAME, "body").text
@@ -404,7 +389,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         """
         print("\n[TC-05] Testing duplicate section validation on creation...")
         self._login(self.coord_email)
-        create_url = f"{BASE_URL}/academic/coordinator/sections/create/"
+        create_url = f"{self.live_server_url}/academic/coordinator/sections/create/"
         self.driver.get(create_url)
 
         wait_for_element(self.driver, By.ID, "id_course")
@@ -458,8 +443,12 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         self._login(self.instructor_1.email)
 
         # Navigate to dashboard
-        self.driver.get(f"{BASE_URL}/academic/dashboard/")
+        self.driver.get(f"{self.live_server_url}/academic/dashboard/")
         self.wait.until(lambda d: "/academic/" in d.current_url)
+
+        # Open project create form
+        toggle_btn = wait_for_element(self.driver, By.XPATH, "//button[contains(., 'New Assessment Session')]")
+        toggle_btn.click()
 
         # Check section dropdown in ProjectForm
         section_select_elem = wait_for_element(self.driver, By.NAME, "section")
@@ -497,7 +486,7 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
 
         self._login(self.student.email)
 
-        courses_url = f"{BASE_URL}/academic/student/courses/"
+        courses_url = f"{self.live_server_url}/academic/student/courses/"
         self.driver.get(courses_url)
         self.wait.until(lambda d: "/student/courses/" in d.current_url)
 
@@ -541,13 +530,13 @@ class TestInstructorAssignmentSelenium(unittest.TestCase):
         self._login(self.student.email)
 
         # 1. Attempt to access coordinator dashboard
-        self.driver.get(f"{BASE_URL}/academic/coordinator/dashboard/")
+        self.driver.get(f"{self.live_server_url}/academic/coordinator/dashboard/")
         self.wait.until(lambda d: "/coordinator/dashboard/" not in d.current_url)
         self.assertNotIn("/academic/coordinator/dashboard/", self.driver.current_url)
         print(f"  -> Access to Coordinator Dashboard denied, redirected to: {self.driver.current_url}")
 
         # 2. Attempt to access section create
-        self.driver.get(f"{BASE_URL}/academic/coordinator/sections/create/")
+        self.driver.get(f"{self.live_server_url}/academic/coordinator/sections/create/")
         self.wait.until(lambda d: "/coordinator/sections/create/" not in d.current_url)
         self.assertNotIn("/academic/coordinator/sections/create/", self.driver.current_url)
         print(f"  -> Access to Section Create denied, redirected to: {self.driver.current_url}")

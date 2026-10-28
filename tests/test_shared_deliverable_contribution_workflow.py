@@ -271,7 +271,7 @@ class DeliverableTaggingWorkflowTests(TestCase):
         self.assertEqual(deliverable.contributions.count(), 0)
 
         messages = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any("Deliverable and contributions submitted successfully." in m for m in messages))
+        self.assertTrue(any("Deliverable submitted successfully." in m for m in messages))
 
     def test_submit_deliverable_with_single_teammate_tag(self):
         """Submit deliverable with 1 teammate tagged -> DeliverableContribution created with status PENDING."""
@@ -1491,7 +1491,7 @@ class SharedContributionSeleniumE2ETests(StaticLiveServerTestCase):
         submit_btn.click()
 
         # Wait for page reload and success message
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Deliverable and contributions submitted successfully.')]")))
+        self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Deliverable submitted successfully.')]")))
 
         # Verify listed with Bob and Pending badge
         body_text = self.driver.find_element(By.TAG_NAME, "body").text

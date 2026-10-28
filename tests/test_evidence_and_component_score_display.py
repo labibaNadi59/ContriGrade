@@ -216,7 +216,7 @@ class EvidenceAndComponentScoreDisplayTests(TestCase):
         self.assertIn("Tasks: 24.0 pts", content)
         self.assertIn("Peer: 24.0 pts", content)
         self.assertIn("80.0%", content)
-        self.assertIn("Calculated Total", content)
+        self.assertIn("Recommended Score", content)
 
         # Component Scores and Weights
         self.assertIn("× 40%", content)  # GitHub policy weight

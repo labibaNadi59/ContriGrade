@@ -215,6 +215,22 @@ class DeliverableContribution(models.Model):
         return f"{self.student.name} - {self.contribution_area} ({self.get_status_display()})"
 
 
+class ClaimPeerVote(models.Model):
+    VOTE_CHOICES = (
+        ('VERIFIED', 'Verified'),
+        ('REJECTED', 'Rejected'),
+    )
+    claim = models.ForeignKey(DeliverableContribution, on_delete=models.CASCADE, related_name='peer_votes')
+    voter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    vote = models.CharField(max_length=10, choices=VOTE_CHOICES)
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('claim', 'voter')  # Prevents multiple votes from the same student
+
+    def __str__(self):
+        return f"{self.voter.name} -> {self.vote} on claim {self.claim.pk}"
+
 class EvaluationCriterion(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='evaluation_criteria')
     name = models.CharField(max_length=100, help_text="e.g., Technical Contribution, Communication, Punctuality")

@@ -149,13 +149,13 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
         self.driver.get(f"{self.live_server_url}{self.evidence_path}")
 
         # Verify page header and student title
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Contribution Evidence')]")))
+        self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Consolidated Assessment')]")))
         body_text = self.driver.find_element(By.TAG_NAME, "body").text
         self.assertIn("Alice Walker", body_text)
         self.assertIn("Alpha Squad", body_text)
 
         # Verify Calculated Total and component scores
-        self.assertIn("Calculated Total", self.driver.page_source)
+        self.assertIn("Recommended Score", self.driver.page_source)
         self.assertIn("80.0%", body_text)
         self.assertIn("Verified Tasks", body_text)
         self.assertIn("Peer Ratings", body_text)
@@ -176,7 +176,7 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
 
         # Verify navigation to Alice's evidence page
         self.wait.until(EC.url_contains(self.evidence_path))
-        self.assertIn("Contribution Evidence", self.driver.page_source)
+        self.assertIn("Consolidated Assessment", self.driver.page_source)
 
     # -------------------------------------------------------------------------
     # TEST 3: Instructor views verified deliverables evidence
@@ -230,5 +230,5 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
 
         # Wait until student is redirected to student area
         self.wait.until(EC.url_contains("/academic/student/"))
-        self.assertNotIn("Contribution Evidence", self.driver.page_source)
+        self.assertNotIn("Consolidated Assessment", self.driver.page_source)
 

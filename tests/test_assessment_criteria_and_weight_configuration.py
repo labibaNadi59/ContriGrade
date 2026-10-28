@@ -172,8 +172,8 @@ class ProjectWeightModelValidationTests(BaseAssessmentTestSetup):
         self.project.weight_peer = 30  # total = 90%
         with self.assertRaises(ValidationError) as ctx:
             self.project.clean()
-        self.assertIn("Total assessment weights must equal exactly 100%", str(ctx.exception))
-        self.assertIn("Current total is 90%", str(ctx.exception))
+        self.assertIn("Assessment weights must sum to exactly 100%", str(ctx.exception))
+        self.assertIn("Your current total is 90%", str(ctx.exception))
 
     def test_weights_summing_greater_than_100_raises_validation_error(self):
         """Weights totaling greater than 100% raise ValidationError."""
@@ -182,8 +182,8 @@ class ProjectWeightModelValidationTests(BaseAssessmentTestSetup):
         self.project.weight_peer = 30  # total = 120%
         with self.assertRaises(ValidationError) as ctx:
             self.project.clean()
-        self.assertIn("Total assessment weights must equal exactly 100%", str(ctx.exception))
-        self.assertIn("Current total is 120%", str(ctx.exception))
+        self.assertIn("Assessment weights must sum to exactly 100%", str(ctx.exception))
+        self.assertIn("Your current total is 120%", str(ctx.exception))
 
     def test_none_weights_treated_as_zero_and_validated(self):
         """None weights evaluate to 0 in clean() calculation."""

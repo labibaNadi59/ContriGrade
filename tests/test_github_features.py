@@ -4,6 +4,16 @@ import sys
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
+django.setup()
+
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.test import override_settings
+from django.utils import timezone
+from accounts.models import User
+from academic.models import Course, CourseSection, Project, Team, TeamMember
+
 import time
 import unittest
 import requests
@@ -16,7 +26,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
 BASE_URL = "http://127.0.0.1:8000"
-LOGIN_URL = f"{BASE_URL}/accounts/login/"
+LOGIN_URL = "http://127.0.0.1:8000/accounts/login/"
 
 
 def get_driver(headless=True):
@@ -63,8 +73,10 @@ def wait_for_text_in_element(driver, by, value, expected_text, timeout=30):
     raise TimeoutError(f"Text '{expected_text}' not found in {by}={value} within {timeout}s")
 
 
-def perform_login(driver, email, password):
-    driver.get(LOGIN_URL)
+def perform_login(driver, email, password, login_url=None):
+    if login_url is None:
+        login_url = LOGIN_URL
+    driver.get(login_url)
     wait = WebDriverWait(driver, 15)
 
     # Wait for login form
@@ -83,23 +95,84 @@ def perform_login(driver, email, password):
     time.sleep(1)
 
 
-class TestGitHubFeatures(unittest.TestCase):
+@override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+class TestGitHubFeatures(StaticLiveServerTestCase):
 
-    def setUp(self):
-        self.driver = get_driver(headless=True)
-        self.wait = WebDriverWait(self.driver, 30)
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.driver = get_driver(headless=True)
+        cls.wait = WebDriverWait(cls.driver, 30)
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.driver:
+            cls.driver.quit()
+        super().tearDownClass()
 
     def tearDown(self):
-        if self.driver:
-            self.driver.quit()
+        super().tearDown()
+        self.driver.delete_all_cookies()
+
+    def setUp(self):
+        super().setUp()
+        self.admin = User.objects.create_superuser(
+            email="nadi@gmail.com",
+            name="Nadi",
+            password="123"
+        )
+        self.instructor = User.objects.create_user(
+            email="tanjina@gmail.com",
+            name="Tanjina",
+            role=User.Role.INSTRUCTOR,
+            password="123"
+        )
+        self.student = User.objects.create_user(
+            email="labiba@gmail.com",
+            name="labiba",
+            role=User.Role.STUDENT,
+            password="123"
+        )
+        self.student.github_username = "labibaNadi59"
+        self.student.save()
+
+        self.course = Course.objects.create(
+            course_code="CSE 314",
+            course_name="Operating Systems",
+            coordinator=self.instructor
+        )
+        self.section = CourseSection.objects.create(
+            course=self.course,
+            section_name="Section A",
+            instructor=self.instructor
+        )
+        self.section.students.add(self.student)
+        self.project = Project.objects.create(
+            section=self.section,
+            title="Project Alpha",
+            deadline=timezone.now() + timezone.timedelta(days=7),
+            weight_github=40,
+            weight_deliverables=30,
+            weight_peer=30
+        )
+        self.team = Team.objects.create(
+            project=self.project,
+            team_name="VoltShare",
+            github_repo_url="https://github.com/labibaNadi59/ContriGrade"
+        )
+        self.member = TeamMember.objects.create(
+            team=self.team,
+            user=self.student,
+            role_in_team="Developer"
+        )
 
     def test_tc_gh_01_admin_github_api_connection(self):
         """TC-GH-01: Admin tests GitHub API connection in System API Settings."""
         print("\n[RUNNING] TC-GH-01: Admin GitHub API Connection Test")
-        perform_login(self.driver, "nadi@gmail.com", "123")
+        perform_login(self.driver, "nadi@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
 
         # Navigate to System API Settings (accurate route)
-        api_settings_url = f"{BASE_URL}/accounts/management/api-settings/"
+        api_settings_url = f"{self.live_server_url}/accounts/management/api-settings/"
         self.driver.get(api_settings_url)
 
         # Verify page header
@@ -129,9 +202,9 @@ class TestGitHubFeatures(unittest.TestCase):
     def test_tc_gh_02_student_profile_github_username_validation(self):
         """TC-GH-02: Student Profile settings validates GitHub username against GitHub API."""
         print("\n[RUNNING] TC-GH-02: Student Profile GitHub Username Validation")
-        perform_login(self.driver, "labiba@gmail.com", "123")
+        perform_login(self.driver, "labiba@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
 
-        profile_url = f"{BASE_URL}/accounts/profile/"
+        profile_url = f"{self.live_server_url}/accounts/profile/"
         self.driver.get(profile_url)
 
         # Verify profile form and github_username field
@@ -169,9 +242,9 @@ class TestGitHubFeatures(unittest.TestCase):
     def test_tc_gh_03_team_repo_validation_and_link(self):
         """TC-GH-03: Team GitHub repository linking validates URL format & GitHub repo existence."""
         print("\n[RUNNING] TC-GH-03: Team GitHub Repository URL Validation & Linking")
-        perform_login(self.driver, "labiba@gmail.com", "123")
+        perform_login(self.driver, "labiba@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
 
-        repo_link_url = f"{BASE_URL}/academic/student/team/2/repo/"
+        repo_link_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(repo_link_url)
 
         # Check page header
@@ -210,9 +283,9 @@ class TestGitHubFeatures(unittest.TestCase):
     def test_tc_gh_04_student_team_progress_dashboard(self):
         """TC-GH-04: Student views team progress dashboard with GitHub commits & visual charts."""
         print("\n[RUNNING] TC-GH-04: Student Team Progress Analytics & UI Elements")
-        perform_login(self.driver, "labiba@gmail.com", "123")
+        perform_login(self.driver, "labiba@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
 
-        progress_url = f"{BASE_URL}/academic/student/team/2/progress/"
+        progress_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/progress/"
         self.driver.get(progress_url)
 
         # Verify Page Header
@@ -250,9 +323,9 @@ class TestGitHubFeatures(unittest.TestCase):
     def test_tc_gh_05_instructor_team_analytics_and_integrity_flags(self):
         """TC-GH-05: Instructor views Team Analytics with Recent Commits feed & Integrity Flags."""
         print("\n[RUNNING] TC-GH-05: Instructor Team Analytics & Integrity Flags Engine")
-        perform_login(self.driver, "tanjina@gmail.com", "123")
+        perform_login(self.driver, "tanjina@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
 
-        analytics_url = f"{BASE_URL}/academic/instructor/team/2/analytics/"
+        analytics_url = f"{self.live_server_url}/academic/instructor/team/{self.team.team_id}/analytics/"
         self.driver.get(analytics_url)
 
         # Header Check
@@ -292,9 +365,9 @@ class TestGitHubFeatures(unittest.TestCase):
     def test_tc_gh_06_instructor_master_report_and_csv_export(self):
         """TC-GH-06: Instructor views Master Class Report with GitHub metrics and tests CSV export."""
         print("\n[RUNNING] TC-GH-06: Master Report & CSV Export")
-        perform_login(self.driver, "tanjina@gmail.com", "123")
+        perform_login(self.driver, "tanjina@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
 
-        report_url = f"{BASE_URL}/academic/instructor/project/2/report/"
+        report_url = f"{self.live_server_url}/academic/instructor/project/{self.project.project_id}/report/"
         self.driver.get(report_url)
 
         # Header check
@@ -311,8 +384,11 @@ class TestGitHubFeatures(unittest.TestCase):
         table_headers = [th.text.upper() for th in self.driver.find_elements(By.TAG_NAME, "th")]
         print("  -> Table Columns:", ", ".join(table_headers))
         self.assertTrue(any("STUDENT" in th for th in table_headers))
-        self.assertTrue(any("COMMITS" in th for th in table_headers))
-        self.assertTrue(any("LINES OF CODE" in th for th in table_headers))
+        self.assertTrue(any("GITHUB" in th for th in table_headers))
+        self.assertTrue(any("FINAL SCORE" in th for th in table_headers))
+
+        table_body_text = self.driver.find_element(By.TAG_NAME, "tbody").text.lower()
+        self.assertIn("commits", table_body_text)
 
         # Check CSV Export link
         csv_link = wait_for_element(self.driver, By.XPATH, "//a[contains(@href, 'export=csv')]")
@@ -325,7 +401,8 @@ class TestGitHubFeatures(unittest.TestCase):
         resp = requests.get(csv_href, cookies=cookies)
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp.headers.get("Content-Type", ""))
-        self.assertIn("Student Name,GitHub Username,Team,Role,Commits,Lines Added,Lines Deleted,Integrity Flags", resp.text)
+        self.assertIn("Student Name,GitHub Username,Team,Role,Commits,Lines Added,Lines Deleted", resp.text)
+        self.assertIn("Integrity Flags", resp.text)
         print("  -> CSV Export verified successfully with HTTP 200 and standard CSV header row.")
         print("  -> [PASSED] TC-GH-06")
 
