@@ -99,10 +99,13 @@
                                 <h5 class="font-bold text-[11px] text-slate-400 uppercase tracking-wider mb-2">Assigned Students ({{ team.members.count }})</h5>
                                 <ul class="space-y-1.5">
                                     {% for member in team.members.all %}
-                                        <li class="flex items-center gap-2 text-sm text-slate-700">
-                                            <i class="fa-solid fa-circle-user text-slate-300"></i>
-                                            <span class="font-semibold">{{ member.name }}</span>
-                                            <span class="text-xs text-slate-400">({{ member.email }})</span>
+                                        <li class="flex items-center justify-between text-sm text-slate-700 bg-slate-50 px-3 py-1.5 rounded-md border border-slate-100">
+                                            <div class="flex items-center gap-2">
+                                                <i class="fa-solid fa-circle-user text-slate-400"></i>
+                                                <span class="font-semibold">{{ member.name }}</span>
+                                            </div>
+                                            <!-- Prominently display the email/ID on the right -->
+                                            <span class="text-xs font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">{{ member.email }}</span>
                                         </li>
                                     {% empty %}
                                         <li class="text-slate-400 italic text-sm">No students assigned yet.</li>
@@ -229,12 +232,17 @@
                                 // B. Build beautiful checkbox row for Custom UI
                                 const item = document.createElement('label');
                                 item.className = 'flex items-center p-3 hover:bg-green-50 cursor-pointer transition group';
+
+                                // Extract the Student ID from the email (everything before the @)
+                                const studentId = student.email.split('@')[0];
+
                                 item.innerHTML = `
                                     <div class="flex-shrink-0 mr-3">
                                         <input type="checkbox" value="${student.id}" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer transition">
                                     </div>
                                     <div class="flex flex-col">
-                                        <span class="text-sm font-bold text-slate-700 group-hover:text-green-800 transition">${student.name}</span>
+                                        <!-- Include ID next to the name so it is instantly searchable -->
+                                        <span class="text-sm font-bold text-slate-700 group-hover:text-green-800 transition">${student.name} (${studentId})</span>
                                         <span class="text-xs text-slate-500 group-hover:text-green-600 transition">${student.email}</span>
                                     </div>
                                 `;

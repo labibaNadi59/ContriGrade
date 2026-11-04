@@ -1015,15 +1015,27 @@ def section_delete(request, section_id):
         return redirect('dashboard_redirect')
 
     section = get_object_or_404(CourseSection, section_id=section_id)
+    course = section.course  # Grab the parent course before the section is deleted
 
     # Security Check: Ensure this coordinator actually owns the parent course
-    if section.course.coordinator != request.user:
+    if course.coordinator != request.user:
         messages.error(request, "You are not authorized to delete sections for this course.")
         return redirect('coordinator_sections')
 
     if request.method == 'POST':
+        # 1. Delete the section
         section.delete()
-        messages.success(request, "Section deleted successfully.")
+
+        # 2. Check if this was the last active section for the course
+        if course.sections.count() == 0:
+            course_code = course.course_code
+            # 3. Delete the course.
+            # Because of models.CASCADE, this automatically deletes the CourseAssessmentPolicy!
+            course.delete()
+            messages.success(request,
+                             f"Section deleted. Since it was the last section, '{course_code}' and its curriculum policies were also removed.")
+        else:
+            messages.success(request, "Section deleted successfully.")
 
     return redirect('coordinator_sections')
 
