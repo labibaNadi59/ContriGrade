@@ -58,4 +58,5 @@ path('instructor/team/<int:team_id>/assessment-report/', views.team_assessment_r
 path('instructor/project/<int:project_id>/assessment-report/', views.project_assessment_report, name='project_assessment_report'),
 
 path('instructor/sections/', views.instructor_sections, name='instructor_sections'),
+path('help/', views.help_center, name='help_center'),
 ]

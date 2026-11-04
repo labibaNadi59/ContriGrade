@@ -699,20 +699,35 @@ def reject_claim(request, claim_id):
             messages.error(request, "Cannot reject. The project deadline has passed.")
 
     return redirect('student_team_progress', team_id=team.team_id)
+
+
 @login_required
 @student_required
 def student_courses(request):
-    # My Enrolled Courses
+    # Fetch Enrolled Sections
     my_sections = CourseSection.objects.filter(students=request.user).select_related('course', 'instructor')
 
+    # Fetch the student's team memberships to map them to the corresponding section
+    from .models import TeamMember  # Ensure this is imported
+    memberships = TeamMember.objects.filter(user=request.user).select_related('team__project__section')
+
+    # Create a dictionary mapping {section_id: team_id}
+    section_team_map = {m.team.project.section_id: m.team.pk for m in memberships if m.team.project}
+
+    # Combine section data with their specific team ID
+    sections_data = []
+    for sec in my_sections:
+        sections_data.append({
+            'section': sec,
+            'team_id': section_team_map.get(sec.pk)
+        })
 
     enroll_form = StudentEnrollmentForm()
 
     return render(request, 'academic/student_courses.html', {
-        'my_sections': my_sections,
+        'sections_data': sections_data,  # Replaced 'my_sections' with this combined list
         'enroll_form': enroll_form,
     })
-
 
 @login_required
 @student_required
@@ -1647,4 +1662,11 @@ def instructor_sections(request):
 
     return render(request, 'academic/instructor_sections.html', {
         'assigned_sections': assigned_sections,
+    })
+
+
+@login_required
+def help_center(request):
+    return render(request, 'academic/help_center.html', {
+        'user': request.user
     })

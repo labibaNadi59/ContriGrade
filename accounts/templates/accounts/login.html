@@ -2,35 +2,131 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - ContriGrade</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Subtle entrance animation */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.7s ease-out forwards;
+        }
+
+        /* Background floating shapes animation */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
-    <div class="bg-white p-8 rounded-lg shadow-md w-96">
-        <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">ContriGrade</h2>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center min-h-screen p-4 sm:p-8 font-sans overflow-hidden">
 
-        {% if form.errors %}
-            <p class="text-red-500 text-sm mb-4 text-center">Invalid email or password.</p>
-        {% endif %}
+    <!-- Main Container -->
+    <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row animate-fade-in-up">
 
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
-
-                <input type="email" name="username" class="w-full px-3 py-2 border rounded-lg" required>
+        <!-- Left Side: Branding & Info Panel (Hidden on very small screens) -->
+        <div class="hidden md:flex md:w-1/2 bg-gradient-to-br from-blue-700 to-indigo-800 p-12 flex-col justify-between relative overflow-hidden text-white">
+            <!-- Decorative Background Elements -->
+            <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                <div class="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-white animate-float" style="animation-delay: 0s;"></div>
+                <div class="absolute top-1/4 -right-12 w-32 h-32 rounded-full bg-white animate-float" style="animation-delay: 2s;"></div>
+                <div class="absolute -bottom-16 left-1/4 w-56 h-56 rounded-full bg-white animate-float" style="animation-delay: 4s;"></div>
             </div>
-            <div class="mb-6">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
-                <input type="password" name="password" class="w-full px-3 py-2 border rounded-lg" required>
+
+            <div class="relative z-10">
+                <div class="flex items-center space-x-3 mb-10">
+                    <div class="w-10 h-10 bg-white text-blue-700 rounded-lg flex items-center justify-center font-black text-xl shadow-lg">C</div>
+                    <span class="text-2xl font-extrabold tracking-tight">ContriGrade</span>
+                </div>
+
+                <h1 class="text-4xl font-bold leading-tight mb-4">
+                    Fair grading,<br>powered by analytics.
+                </h1>
+                <p class="text-blue-100 text-lg font-medium mb-8">
+                    Seamlessly connect your GitHub repository, track authentic contributions, and manage peer evaluations in one unified academic platform.
+                </p>
             </div>
-            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">
-                Sign In
-            </button>
-        </form>
-        <p class="mt-4 text-center text-sm text-gray-600">
-    New to ContriGrade? <a href="{% url 'signup' %}" class="text-blue-600 hover:underline">Request access</a>
-</p>
+
+            <div class="relative z-10">
+                <div class="flex items-center space-x-3 text-sm text-blue-200">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Secure institutional access only</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Login Form -->
+        <div class="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center bg-white relative">
+
+            <!-- Mobile Logo (Shows only on small screens) -->
+            <div class="flex md:hidden items-center justify-center space-x-2 mb-8">
+                <div class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-lg">C</div>
+                <span class="text-xl font-bold text-blue-600">ContriGrade</span>
+            </div>
+
+            <div class="mb-8 text-center md:text-left">
+                <h2 class="text-3xl font-extrabold text-gray-900 mb-2">Welcome back</h2>
+                <p class="text-gray-500 font-medium">Please enter your credentials to access your dashboard.</p>
+            </div>
+
+            <!-- Error Handling -->
+            {% if form.errors %}
+                <div class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg animate-fade-in-up" style="animation-duration: 0.3s;">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-circle-exclamation text-red-500 mr-3"></i>
+                        <p class="text-red-700 text-sm font-semibold">Invalid email or password. Please try again.</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" class="space-y-5">
+                {% csrf_token %}
+
+                <!-- Email Input -->
+<div>
+    <label class="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-2">Institutional Email</label>
+    <div class="relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">
+            <i class="fa-regular fa-envelope"></i>
+        </span>
+        <!-- ADDED: autocomplete="username" -->
+        <input type="email" name="username" autocomplete="username" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 transition-all" placeholder="name@university.edu.bd" required>
+    </div>
+</div>
+
+<!-- Password Input -->
+<div>
+    <label class="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-2">Password</label>
+    <div class="relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">
+            <i class="fa-solid fa-lock"></i>
+        </span>
+        <!-- ADDED: autocomplete="current-password" -->
+        <input type="password" name="password" autocomplete="current-password" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 transition-all" placeholder="••••••••" required>
+    </div>
+</div>
+
+                <!-- Remember Me / Forgot Password Row (Optional visual elements for realism) -->
+
+
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 outline-none focus:ring-4 focus:ring-blue-200">
+                    Sign In <i class="fa-solid fa-arrow-right-to-bracket ml-2"></i>
+                </button>
+            </form>
+
+            <p class="mt-8 text-center text-sm font-medium text-gray-600">
+                New to ContriGrade?
+                <a href="{% url 'signup' %}" class="text-blue-600 font-bold hover:text-blue-800 hover:underline transition-colors">Request access</a>
+            </p>
+        </div>
     </div>
 </body>
 </html>

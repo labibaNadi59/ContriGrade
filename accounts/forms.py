@@ -1,18 +1,21 @@
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.core.exceptions import ValidationError
+
 from .models import User
 from django.contrib.auth import get_user_model
 from django.conf import settings
 import requests
 
-class SignUpForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}))
 
+class SignUpForm(UserCreationForm):
     class Meta:
         model = User
-        fields = ['name', 'email', 'role', 'password']
+        fields = ['name', 'email', 'role']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
-            'email': forms.EmailInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'email': forms.EmailInput(
+                attrs={'class': 'w-full px-3 py-2 border rounded-lg', 'placeholder': 'name@university.edu.bd'}),
             'role': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
         }
 
@@ -23,12 +26,25 @@ class SignUpForm(forms.ModelForm):
             choice for choice in User.Role.choices if choice[0] != User.Role.ADMIN
         ]
 
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.set_password(self.cleaned_data['password'])
-        if commit:
-            user.save()
-        return user
+        for field_name in ['password1', 'password2']:
+            self.fields[field_name].widget.attrs.update({
+                'class': 'w-full px-3 py-2 border rounded-lg'
+            })
+
+    def clean(self):
+        # super().clean() securely processes the passwords and base fields first
+        cleaned_data = super().clean()
+        email = cleaned_data.get('email')
+        role = cleaned_data.get('role')
+
+        if email and role:
+            # Exempt ADMIN from the restriction
+            if role != 'ADMIN':
+                email_lower = email.lower()
+                if not email_lower.endswith('.edu') and not email_lower.endswith('.edu.bd'):
+                    self.add_error('email', "A valid university email (.edu or .edu.bd) is required for this role.")
+
+        return cleaned_data
 
 
 class AdminUserCreationForm(forms.ModelForm):
@@ -43,6 +59,20 @@ class AdminUserCreationForm(forms.ModelForm):
             'role': forms.Select(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-blue-600 border-gray-300 rounded'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        email = cleaned_data.get('email')
+        role = cleaned_data.get('role')
+
+        if email and role:
+            # Exempt ADMIN from the restriction
+            if role != 'ADMIN':
+                email_lower = email.lower()
+                if not email_lower.endswith('.edu') and not email_lower.endswith('.edu.bd'):
+                    self.add_error('email', "A valid university email (.edu or .edu.bd) is required for this role.")
+
+        return cleaned_data
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -63,6 +93,20 @@ class AdminUserUpdateForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-blue-600 border-gray-300 rounded'}),
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        email = cleaned_data.get('email')
+        role = cleaned_data.get('role')
+
+        if email and role:
+            # Exempt ADMIN from the restriction
+            if role != 'ADMIN':
+                email_lower = email.lower()
+                if not email_lower.endswith('.edu') and not email_lower.endswith('.edu.bd'):
+                    self.add_error('email', "A valid university email (.edu or .edu.bd) is required for this role.")
+
+        return cleaned_data
+
 
 User = get_user_model()
 
@@ -70,7 +114,7 @@ User = get_user_model()
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['name', 'github_username']
+        fields = ['profile_picture', 'name', 'github_username']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none',
@@ -78,6 +122,10 @@ class ProfileUpdateForm(forms.ModelForm):
             'github_username': forms.TextInput(attrs={
                 'class': 'w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none rounded-l-none border-l-0',
                 'placeholder': 'e.g., rahim@2026'
+            }),
+            'profile_picture': forms.FileInput(attrs={
+                'class': 'w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition cursor-pointer',
+                'accept': 'image/*'
             }),
         }
 

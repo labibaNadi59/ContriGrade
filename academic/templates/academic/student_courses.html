@@ -34,22 +34,30 @@
 
     <h2 class="text-2xl font-bold mb-6">My Enrolled Courses</h2>
 
-    {% if my_sections %}
+    {% if sections_data %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {% for sec in my_sections %}
+            {% for data in sections_data %}
                 <div class="bg-white border border-gray-200 p-5 rounded-lg shadow-sm flex flex-col border-l-4 border-blue-500">
-                    <span class="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">Course Code: {{ sec.course.course_code }}</span>
-                    <span class="font-bold text-gray-800 text-lg">{{ sec.course.course_name }}</span>
-                    <span class="text-sm font-semibold text-blue-600 mt-2">{{ sec.section_name }}</span>
-                    <span class="text-xs text-gray-500 mt-1">Instructor: {{ sec.instructor.name|default:"TBA" }}</span>
+                    <span class="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">Course Code: {{ data.section.course.course_code }}</span>
+                    <span class="font-bold text-gray-800 text-lg">{{ data.section.course.course_name }}</span>
+                    <span class="text-sm font-semibold text-blue-600 mt-2">{{ data.section.section_name }}</span>
+                    <span class="text-xs text-gray-500 mt-1">Instructor: {{ data.section.instructor.name|default:"TBA" }}</span>
 
                     <div class="mt-4 flex justify-between items-center border-t pt-3 border-gray-100">
                         <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                             <i class="fa-solid fa-check mr-1"></i> Active Enrollment
                         </span>
-                        <a href="{% url 'student_dashboard' %}" class="text-sm font-semibold text-blue-600 hover:text-blue-800 transition flex items-center">
-                            Go to Team Projects <i class="fa-solid fa-arrow-right ml-1"></i>
-                        </a>
+
+                        <!-- NEW: Dynamic Project Button -->
+                        {% if data.team_id %}
+                            <a href="{% url 'student_team_progress' data.team_id %}" class="text-sm font-semibold text-blue-600 hover:text-blue-800 transition flex items-center">
+                                Go to Team Project <i class="fa-solid fa-arrow-right ml-1"></i>
+                            </a>
+                        {% else %}
+                            <span class="text-sm font-semibold text-gray-400 flex items-center cursor-not-allowed" title="Your instructor has not assigned you to a project team yet.">
+                                <i class="fa-solid fa-circle-exclamation mr-1"></i> No project found
+                            </span>
+                        {% endif %}
                     </div>
                 </div>
             {% endfor %}

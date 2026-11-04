@@ -2,23 +2,153 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up - ContriGrade</title>
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
-    <div class="bg-white p-8 rounded-lg shadow-md w-96">
-        <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Create Account</h2>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
 
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="mt-4 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
-                Register
-            </button>
-        </form>
-        <p class="mt-4 text-center text-sm text-gray-600">
-            Already have an account? <a href="{% url 'login' %}" class="text-blue-600 hover:underline">Sign in</a>
-        </p>
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Compact form inputs */
+        form input, form select {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            outline: none;
+        }
+        form input:focus, form select:focus {
+            border-color: #3b82f6;
+            background-color: #ffffff;
+            box-shadow: 0 0 0 2px rgba(191, 219, 254, 0.5);
+        }
+
+        /* Force Django's bulky help text lists into a tight format */
+        .django-help-text ul {
+            padding-left: 1.25rem;
+            list-style-type: disc;
+            margin-top: 0.25rem;
+        }
+        .django-help-text li {
+            margin-bottom: 0.1rem;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center min-h-screen p-4 font-sans overflow-hidden">
+
+    <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row animate-fade-in-up max-h-[95vh]">
+
+        <!-- Left Side: Branding -->
+        <div class="hidden md:flex md:w-5/12 bg-gradient-to-br from-blue-700 to-indigo-800 p-8 lg:p-10 flex-col justify-between relative overflow-hidden text-white">
+            <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                <div class="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-white animate-float" style="animation-delay: 0s;"></div>
+                <div class="absolute top-1/4 -right-12 w-32 h-32 rounded-full bg-white animate-float" style="animation-delay: 2s;"></div>
+            </div>
+
+            <div class="relative z-10">
+                <div class="flex items-center space-x-3 mb-8">
+                    <div class="w-8 h-8 bg-white text-blue-700 rounded-lg flex items-center justify-center font-black text-lg shadow-lg">C</div>
+                    <span class="text-xl font-extrabold tracking-tight">ContriGrade</span>
+                </div>
+
+                <h1 class="text-3xl font-bold leading-tight mb-3">
+                    Join your academic workspace.
+                </h1>
+                <p class="text-blue-100 text-sm font-medium">
+                    Register with your institutional email to collaborate and track contributions securely.
+                </p>
+            </div>
+
+            <div class="relative z-10">
+                <div class="flex items-center space-x-3 text-xs text-blue-200 font-medium">
+                    <i class="fa-solid fa-building-columns"></i>
+                    <span>Requires .edu or .edu.bd email</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Form Container (Scrollable if needed) -->
+        <div class="w-full md:w-7/12 p-6 sm:p-8 flex flex-col justify-start bg-white relative overflow-y-auto custom-scrollbar">
+
+            <div class="flex md:hidden items-center justify-center space-x-2 mb-4">
+                <div class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-lg">C</div>
+                <span class="text-xl font-bold text-blue-600">ContriGrade</span>
+            </div>
+
+            <div class="mb-5 text-center md:text-left">
+                <h2 class="text-2xl font-extrabold text-gray-900">Create Account</h2>
+            </div>
+
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="mb-3 bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-circle-exclamation text-red-500 mr-2 text-sm"></i>
+                            <div class="text-red-700 text-xs font-semibold">
+                                {% for error in form.non_field_errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% for field in form %}
+                    <div>
+                        <label class="block text-gray-700 text-[10px] font-bold uppercase tracking-wider mb-1" for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                        </label>
+
+                        {{ field }}
+
+                        {% if field.errors %}
+                            <div class="mt-1 flex items-center text-red-500">
+                                <i class="fa-solid fa-circle-exclamation text-[10px] mr-1"></i>
+                                {% for error in field.errors %}
+                                    <p class="text-[10px] font-bold">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        {% if field.help_text %}
+                            <div class="text-gray-400 text-[10px] mt-1 leading-tight django-help-text">
+                                {{ field.help_text|safe }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <!-- Added extra bottom margin so the button is never cut off by the scroll boundary -->
+                <button type="submit" class="w-full mt-4 mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-2.5 px-4 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 outline-none">
+                    Create Account <i class="fa-solid fa-user-plus ml-1.5"></i>
+                </button>
+            </form>
+
+            <p class="text-center text-xs font-medium text-gray-600 pb-2">
+                Already have an account?
+                <a href="{% url 'login' %}" class="text-blue-600 font-bold hover:text-blue-800 hover:underline">Sign in here</a>
+            </p>
+        </div>
     </div>
 </body>
 </html>
