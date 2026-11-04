@@ -47,6 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     objects = UserManager()
 
     USERNAME_FIELD = 'email'

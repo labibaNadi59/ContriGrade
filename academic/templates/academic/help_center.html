@@ -1,0 +1,140 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}Help Center - ContriGrade{% endblock %}
+
+{% block sidebar_links %}
+    {% if request.user.is_coordinator or request.user.role == 'COORDINATOR' %}
+        <!-- Coordinator Sidebar -->
+        <a href="{% url 'coordinator_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition text-slate-600 hover:bg-slate-50 font-semibold">
+            <i class="fa-solid fa-chart-pie w-5"></i>
+            <span>Overview</span>
+        </a>
+        <a href="{% url 'coordinator_courses' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition text-slate-600 hover:bg-slate-50 font-semibold">
+            <i class="fa-solid fa-book-open w-5"></i>
+            <span>Curriculum Policies</span>
+        </a>
+        <a href="{% url 'coordinator_sections' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition text-slate-600 hover:bg-slate-50 font-semibold">
+            <i class="fa-solid fa-chalkboard-user w-5"></i>
+            <span>Faculty Allocation</span>
+        </a>
+        <a href="{% url 'coordinator_requests' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition text-slate-600 hover:bg-slate-50 font-semibold">
+            <i class="fa-solid fa-inbox w-5"></i>
+            <span>Policy Requests</span>
+        </a>
+
+    {% elif request.user.role == 'INSTRUCTOR' %}
+        <!-- Instructor Sidebar -->
+        <a href="{% url 'dashboard_redirect' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'dashboard_redirect' %}bg-blue-50 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-book-open w-5"></i>
+    <span>Projects</span>
+</a>
+
+<a href="{% url 'instructor_sections' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'instructor_sections' %}bg-blue-50 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-chalkboard-user w-5"></i>
+    <span>Course Sections</span>
+</a>
+
+<a href="{% url 'team_management' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'team_management' %}bg-blue-700 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-users w-5"></i>
+    <span>Teams</span>
+</a>
+
+<a href="{% url 'reports_hub' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors {% if request.resolver_match.url_name == 'reports_hub' %}bg-blue-50 text-blue-700 font-semibold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 font-medium{% endif %}">
+    <i class="fa-solid fa-chart-line w-5"></i>
+    <span>Reports</span>
+</a>
+
+    {% elif request.user.is_student or request.user.role == 'STUDENT' %}
+        <!-- Student Sidebar -->
+        <a href="{% url 'student_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition text-gray-600 hover:bg-gray-50">
+            <i class="fa-solid fa-laptop-code w-5"></i>
+            <span>My Projects</span>
+        </a>
+        <a href="{% url 'student_courses' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition text-gray-600 hover:bg-gray-50">
+            <i class="fa-solid fa-graduation-cap w-5"></i>
+            <span>My Courses</span>
+        </a>
+
+    {% elif request.user.is_admin or request.user.role == 'ADMIN' %}
+        <!-- Admin Sidebar -->
+        <a href="{% url 'system_admin_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-semibold">
+            <i class="fa-solid fa-server w-5"></i>
+            <span>System Control</span>
+        </a>
+        <a href="{% url 'admin_user_management' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-gray-600 hover:bg-gray-50 font-medium">
+            <i class="fa-solid fa-user-gear w-5"></i>
+            <span>User Management</span>
+        </a>
+        <a href="{% url 'system_api_settings' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-gray-600 hover:bg-gray-50 font-medium">
+            <i class="fa-solid fa-gears w-5"></i>
+            <span>API Settings</span>
+        </a>
+        <a href="/admin/" target="_blank" class="flex items-center space-x-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium">
+            <i class="fa-solid fa-sliders w-5"></i>
+            <span>Django Admin</span>
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Interactive Back Button -->
+    <div class="mb-4">
+        <a href="javascript:history.back()" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-blue-600 transition">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Back
+        </a>
+    </div>
+
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800">ContriGrade Help Center</h2>
+        <p class="text-sm text-gray-500 mt-1">Frequently asked questions tailored for your role as {% if request.user.is_student or request.user.role == 'STUDENT' %}a Student{% elif request.user.is_instructor or request.user.role == 'INSTRUCTOR' %}an Instructor{% elif request.user.is_coordinator or request.user.role == 'COORDINATOR' %}a Course Coordinator{% else %}an Administrator{% endif %}.</p>
+    </div>
+
+    <div class="space-y-4">
+
+        <!-- GENERAL FAQ -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h3 class="font-bold text-gray-800 mb-2">How do I change my email address?</h3>
+
+            {% if request.user.is_admin or request.user.role == 'ADMIN' %}
+                <p class="text-sm text-gray-600">As an administrator, your account is exempt from the institutional email restriction. You can manage your email address directly through your <a href="{% url 'profile_settings' %}" class="text-blue-600 hover:underline">Profile Settings</a> or the System Control panel.</p>
+            {% else %}
+                <p class="text-sm text-gray-600">Your email address is permanently tied to your institutional `.edu` or `.edu.bd` account for verification purposes. If you lose access to your university email, contact the system administrator.</p>
+            {% endif %}
+        </div>
+
+        <!-- STUDENT FAQ -->
+        {% if request.user.is_student or request.user.role == 'STUDENT' %}
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h3 class="font-bold text-gray-800 mb-2">Why are my GitHub commits not showing up?</h3>
+                <p class="text-sm text-gray-600">Ensure your GitHub username is correctly entered in your <a href="{% url 'profile_settings' %}" class="text-blue-600 hover:underline">Profile Settings</a>. Also, confirm that your local Git configuration (`git config user.name`) matches your name or GitHub username. Note: Merge commits are intentionally ignored.</p>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h3 class="font-bold text-gray-800 mb-2">How does Peer Verification work?</h3>
+                <p class="text-sm text-gray-600">When you submit a deliverable, you add a claim for what you worked on. Your teammates will receive a notification to verify or reject it. A single rejection flags the claim for instructor review.</p>
+            </div>
+        {% endif %}
+
+        <!-- INSTRUCTOR FAQ -->
+        {% if request.user.is_instructor or request.user.role == 'INSTRUCTOR' %}
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h3 class="font-bold text-gray-800 mb-2">How do I request a custom grading policy?</h3>
+                <p class="text-sm text-gray-600">Navigate to the specific Project Dashboard and click "Request Policy Change" near the grading weights. Your Course Coordinator will review and approve the request via their inbox.</p>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h3 class="font-bold text-gray-800 mb-2">How are free-riders detected?</h3>
+                <p class="text-sm text-gray-600">The Assessment Hub automatically flags students with massive code dumps (>1,000 lines at once), fluff commits, or those whose peer evaluation scores deviate heavily from their Git footprint.</p>
+            </div>
+        {% endif %}
+
+        <!-- COORDINATOR FAQ -->
+        {% if request.user.is_coordinator or request.user.role == 'COORDINATOR' %}
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h3 class="font-bold text-gray-800 mb-2">How do I enforce a global curriculum policy?</h3>
+                <p class="text-sm text-gray-600">Go to Curriculum Policies and edit the course weights. This sets the default GitHub, Deliverable, and Peer Evaluation weights for all sections taught by instructors under this course.</p>
+            </div>
+        {% endif %}
+        
+    </div>
+</div>
+{% endblock %}

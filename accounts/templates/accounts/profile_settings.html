@@ -101,8 +101,43 @@
             <p class="text-sm text-gray-500 mt-1">Manage your personal information and external integrations.</p>
         </div>
 
-        <form method="post" class="space-y-6">
+        <!-- ADDED enctype to support file uploads -->
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
             {% csrf_token %}
+
+            <!-- Profile Picture Upload & Preview -->
+            <div class="flex items-center space-x-6 pb-4 border-b border-gray-100">
+                <div class="shrink-0">
+                    {% if request.user.profile_picture %}
+                        <img class="h-20 w-20 object-cover rounded-full border border-gray-200 shadow-sm" src="{{ request.user.profile_picture.url }}" alt="Profile Photo">
+                    {% else %}
+                        <div class="h-20 w-20 bg-blue-100 text-blue-600 font-bold rounded-full flex items-center justify-center text-2xl shadow-sm">
+                            {{ request.user.name|make_list|first|default:"U" }}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="block w-full">
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">{{ form.profile_picture.label }}</label>
+
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div class="flex-1">
+                            {{ form.profile_picture }}
+                        </div>
+
+                        <!-- NEW: Dynamic Remove Button -->
+                        {% if request.user.profile_picture %}
+                            <button type="submit" name="remove_picture" value="1" formnovalidate class="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors shadow-sm whitespace-nowrap">
+                                <i class="fa-solid fa-trash-can mr-1"></i> Remove
+                            </button>
+                        {% endif %}
+                    </div>
+
+                    {% if form.profile_picture.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.profile_picture.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-[11px] text-gray-400 mt-2">Recommended: Square image (JPG, PNG). Max size 2MB.</p>
+                </div>
+            </div>
 
             <!-- Email (Read-Only) -->
             <div>

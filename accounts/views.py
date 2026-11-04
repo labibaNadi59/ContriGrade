@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import login
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 
@@ -12,33 +13,89 @@ from .models import User
 @login_required
 def profile_settings(request):
     if request.method == 'POST':
-        form = ProfileUpdateForm(request.POST, instance=request.user)
+        # Action 1: Handle Profile Picture Deletion
+        if 'remove_picture' in request.POST:
+            if request.user.profile_picture:
+                request.user.profile_picture.delete(save=False)  # Deletes the file from storage
+                request.user.profile_picture = None
+                request.user.save()
+                messages.success(request, "Profile picture removed successfully.")
+
+            # Redirect to the correct dashboard based on role
+            role = request.user.role
+            if role == 'STUDENT':
+                return redirect('student_dashboard')
+            elif role == 'INSTRUCTOR':
+                return redirect('dashboard_redirect')
+            elif role == 'COORDINATOR':
+                return redirect('coordinator_dashboard')
+            elif role == 'ADMIN':
+                return redirect('system_admin_dashboard')
+            else:
+                return redirect('profile_settings')
+
+        # Action 2: Handle Profile Update
+        form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "Your profile settings have been updated successfully.")
 
-            # Redirect based on role
-            if request.user.role == 'STUDENT':
+            # Redirect to the correct dashboard based on role
+            role = request.user.role
+            if role == 'STUDENT':
                 return redirect('student_dashboard')
+            elif role == 'INSTRUCTOR':
+                return redirect('dashboard_redirect')
+            elif role == 'COORDINATOR':
+                return redirect('coordinator_dashboard')
+            elif role == 'ADMIN':
+                return redirect('system_admin_dashboard')
             else:
                 return redirect('profile_settings')
     else:
         form = ProfileUpdateForm(instance=request.user)
 
-    return render(request, 'accounts/profile_settings.html', {
-        'form': form
-    })
+    return render(request, 'accounts/profile_settings.html', {'form': form})
+
 
 def signup_view(request):
+    # Prevent logged-in users from accessing the signup page
+    if request.user.is_authenticated:
+        role = request.user.role
+        if role == 'STUDENT':
+            return redirect('student_dashboard')
+        elif role == 'INSTRUCTOR':
+            return redirect('dashboard_redirect')
+        elif role == 'COORDINATOR':
+            return redirect('coordinator_dashboard')
+        elif role == 'ADMIN':
+            return redirect('system_admin_dashboard')
+
     if request.method == 'POST':
         form = SignUpForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('login')
+            # Save the new user to the database
+            user = form.save()
+
+            # Instantly establish the session
+            login(request, user)
+
+            # Route directly to their specific dashboard
+            role = user.role
+            if role == 'STUDENT':
+                return redirect('student_dashboard')
+            elif role == 'INSTRUCTOR':
+                return redirect('dashboard_redirect')
+            elif role == 'COORDINATOR':
+                return redirect('coordinator_dashboard')
+            elif role == 'ADMIN':
+                return redirect('system_admin_dashboard')
+            else:
+                return redirect('login')
     else:
         form = SignUpForm()
-    return render(request, 'accounts/signup.html', context={'form': form})
 
+    return render(request, 'accounts/signup.html', context={'form': form})
 
 @login_required
 def system_admin_dashboard(request):
