@@ -179,12 +179,14 @@ def student_team_progress(request, team_id):
                 messages.error(request, "Please describe what you contributed to this deliverable.")
                 return redirect('student_team_progress', team_id=team.team_id)
 
-            existing_claim = DeliverableContribution.objects.filter(deliverable=deliverable,
-                                                                    student=request.user).first()
+            existing_claim = DeliverableContribution.objects.filter(
+                deliverable=deliverable,
+                student=request.user
+            ).exists()
+
+            # Prevent overwriting an existing claim
             if existing_claim:
-                existing_claim.contribution_area = contribution_area
-                existing_claim.save()
-                messages.success(request, "Your contribution claim was updated.")
+                messages.warning(request, "You have already submitted a contribution claim for this deliverable.")
             else:
                 DeliverableContribution.objects.create(
                     deliverable=deliverable,
@@ -215,6 +217,14 @@ def student_team_progress(request, team_id):
 
     user_voted_claim_ids = ClaimPeerVote.objects.filter(voter=request.user).values_list('claim_id', flat=True)
 
+    # Track which deliverables the current student has already claimed
+    user_claimed_deliverable_ids = set(
+        DeliverableContribution.objects.filter(
+            deliverable__team=team,
+            student=request.user
+        ).values_list('deliverable_id', flat=True)
+    )
+
     return render(request, 'academic/student_progress.html', {
         'team': team,
         'analytics': analytics_data,
@@ -224,6 +234,7 @@ def student_team_progress(request, team_id):
         'deliverables': deliverables,
         'evaluated_ids': evaluated_ids,
         'user_voted_claim_ids': user_voted_claim_ids,
+        'user_claimed_deliverable_ids': user_claimed_deliverable_ids,
     })
 
 

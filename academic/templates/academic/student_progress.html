@@ -249,29 +249,31 @@
                                 {% endif %}
 
                                 <!-- Contribution Claims List with Verify / Reject buttons -->
-                                <div class="mt-3 bg-white border border-gray-200 rounded-xl p-3.5 space-y-3">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xs font-bold text-gray-400 uppercase">Contribution Claims:</span>
-                                        {% if team.project.is_active %}
-                                            <!-- Button to add your own claim to this deliverable -->
-                                            <button onclick="toggleClaimForm('claim-form-{{ item.pk }}')" class="text-xs font-bold text-blue-600 hover:text-blue-800">
-                                                <i class="fa-solid fa-plus mr-1"></i> Add My Claim
-                                            </button>
-                                        {% endif %}
-                                    </div>
+<div class="mt-3 bg-white border border-gray-200 rounded-xl p-3.5 space-y-3">
+    <div class="flex justify-between items-center">
+        <span class="text-xs font-bold text-gray-400 uppercase">Contribution Claims:</span>
+        {% if team.project.is_active and item.pk not in user_claimed_deliverable_ids %}
+            <!-- Button only shows if the logged-in student hasn't claimed this deliverable yet -->
+            <button type="button" onclick="toggleClaimForm('claim-form-{{ item.pk }}')" class="text-xs font-bold text-blue-600 hover:text-blue-800">
+                <i class="fa-solid fa-plus mr-1"></i> Add My Claim
+            </button>
+        {% endif %}
+    </div>
 
-                                    <!-- Hidden inline form to add claim on this specific deliverable -->
-                                    <div id="claim-form-{{ item.pk }}" class="hidden bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
-                                        <form method="post">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="add_claim" value="1">
-                                            <input type="hidden" name="deliverable_id" value="{{ item.pk }}">
-                                            <div class="flex gap-2">
-                                                <input type="text" name="contribution_area" required placeholder="What did you contribute to this?" class="flex-1 rounded-md border-slate-300 text-xs px-3 py-2">
-                                                <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded-md text-xs font-bold">Claim</button>
-                                            </div>
-                                        </form>
-                                    </div>
+    {% if team.project.is_active and item.pk not in user_claimed_deliverable_ids %}
+        <!-- Hidden inline form to add claim on this specific deliverable -->
+        <div id="claim-form-{{ item.pk }}" class="hidden bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="add_claim" value="1">
+                <input type="hidden" name="deliverable_id" value="{{ item.pk }}">
+                <div class="flex gap-2">
+                    <input type="text" name="contribution_area" required placeholder="What did you contribute to this?" class="flex-1 rounded-md border-slate-300 text-xs px-3 py-2">
+                    <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded-md text-xs font-bold">Claim</button>
+                </div>
+            </form>
+        </div>
+    {% endif %}
 
                                     <ul class="divide-y divide-gray-100">
                                         {% for claim in item.contributions.all %}
