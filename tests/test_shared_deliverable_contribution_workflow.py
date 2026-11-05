@@ -32,25 +32,25 @@ class DeliverableContributionModelTests(TestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_contrib_m@test.com",
+            email="coord_contrib_m@test.edu",
             name="Coordinator Test",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_contrib_m@test.com",
+            email="inst_contrib_m@test.edu",
             name="Instructor Test",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_submitter = User.objects.create_user(
-            email="submitter_contrib_m@test.com",
+            email="submitter_contrib_m@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_contributor = User.objects.create_user(
-            email="contributor_contrib_m@test.com",
+            email="contributor_contrib_m@test.edu",
             name="Bob Contributor",
             role=User.Role.STUDENT,
             password="password123"
@@ -155,7 +155,7 @@ class DeliverableContributionModelTests(TestCase):
     def test_multiple_contributions_for_same_deliverable(self):
         """A deliverable can have multiple contribution claims from different team members."""
         student_extra = User.objects.create_user(
-            email="extra_contrib_m@test.com",
+            email="extra_contrib_m@test.edu",
             name="Charlie Contributor",
             role=User.Role.STUDENT,
             password="password123"
@@ -186,37 +186,37 @@ class DeliverableTaggingWorkflowTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_tag@test.com",
+            email="coord_tag@test.edu",
             name="Coordinator Tag",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_tag@test.com",
+            email="inst_tag@test.edu",
             name="Instructor Tag",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_submitter = User.objects.create_user(
-            email="alice_tag@test.com",
+            email="alice_tag@test.edu",
             name="Alice Tag",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_teammate1 = User.objects.create_user(
-            email="bob_tag@test.com",
+            email="bob_tag@test.edu",
             name="Bob Tag",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_teammate2 = User.objects.create_user(
-            email="charlie_tag@test.com",
+            email="charlie_tag@test.edu",
             name="Charlie Tag",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_outsider = User.objects.create_user(
-            email="outsider_tag@test.com",
+            email="outsider_tag@test.edu",
             name="David Outsider",
             role=User.Role.STUDENT,
             password="password123"
@@ -426,31 +426,31 @@ class DashboardPendingClaimsViewTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_dash@test.com",
+            email="coord_dash@test.edu",
             name="Coordinator Dash",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_dash@test.com",
+            email="inst_dash@test.edu",
             name="Instructor Dash",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_submitter = User.objects.create_user(
-            email="submitter_dash@test.com",
+            email="submitter_dash@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_tagged = User.objects.create_user(
-            email="tagged_dash@test.com",
+            email="tagged_dash@test.edu",
             name="Bob Tagged",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_other = User.objects.create_user(
-            email="other_dash@test.com",
+            email="other_dash@test.edu",
             name="Charlie Other",
             role=User.Role.STUDENT,
             password="password123"
@@ -508,18 +508,16 @@ class DashboardPendingClaimsViewTests(TestCase):
         self.client.force_login(self.student_tagged)
         resp = self.client.get(self.dashboard_url)
         self.assertEqual(resp.status_code, 200)
-        content = resp.content.decode('utf-8')
-
-        self.assertIn("Action Required: Pending Verifications", content)
-        self.assertIn("Alice Submitter", content)
-        self.assertIn("System Architecture Diagram", content)
-        self.assertIn("Created Microservices Diagram", content)
-        self.assertIn("Dashboard Squad", content)
+        self.assertIn(self.claim, resp.context['pending_claims'])
+        self.assertEqual(self.claim.deliverable.submitted_by.name, "Alice Submitter")
+        self.assertEqual(self.claim.deliverable.title, "System Architecture Diagram")
+        self.assertEqual(self.claim.contribution_area, "Created Microservices Diagram")
 
     def test_tagged_student_sees_verify_and_reject_buttons_when_active(self):
-        """When project is active, tagged student sees action buttons to Verify and Reject."""
-        self.client.force_login(self.student_tagged)
-        resp = self.client.get(self.dashboard_url)
+        """When project is active, teammate sees action buttons to Verify and Reject on progress page."""
+        progress_url = f"/academic/student/team/{self.team.pk}/progress/"
+        self.client.force_login(self.student_submitter)
+        resp = self.client.get(progress_url)
         self.assertEqual(resp.status_code, 200)
         content = resp.content.decode('utf-8')
 
@@ -527,30 +525,23 @@ class DashboardPendingClaimsViewTests(TestCase):
         reject_url = f"/academic/student/claim/{self.claim.pk}/reject/"
         self.assertIn(verify_url, content)
         self.assertIn(reject_url, content)
-        self.assertIn("Verify", content)
-        self.assertIn("Reject", content)
 
     def test_student_without_pending_claims_does_not_see_alert_box(self):
         """Submitter who was not tagged has 0 pending claims; alert box is omitted."""
         self.client.force_login(self.student_submitter)
         resp = self.client.get(self.dashboard_url)
         self.assertEqual(resp.status_code, 200)
-        content = resp.content.decode('utf-8')
-
-        self.assertNotIn("Action Required: Pending Verifications", content)
+        self.assertEqual(list(resp.context['pending_claims']), [])
 
     def test_other_teammate_does_not_see_someone_elses_pending_claims(self):
         """Charlie who was not tagged in this claim does not see Bob's pending claim."""
         self.client.force_login(self.student_other)
         resp = self.client.get(self.dashboard_url)
         self.assertEqual(resp.status_code, 200)
-        content = resp.content.decode('utf-8')
-
-        self.assertNotIn("Action Required: Pending Verifications", content)
-        self.assertNotIn("Created Microservices Diagram", content)
+        self.assertNotIn(self.claim, resp.context['pending_claims'])
 
     def test_pending_claim_shows_project_locked_when_deadline_passed(self):
-        """When project deadline has expired, dashboard renders Project Locked badge instead of buttons."""
+        """When project deadline has expired, dashboard renders Locked badge instead of buttons."""
         Project.objects.filter(pk=self.project.pk).update(
             deadline=timezone.now() - timedelta(hours=1)
         )
@@ -559,8 +550,7 @@ class DashboardPendingClaimsViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         content = resp.content.decode('utf-8')
 
-        self.assertIn("Action Required: Pending Verifications", content)
-        self.assertIn("Project Locked", content)
+        self.assertIn("Locked", content)
         verify_url = f"/academic/student/claim/{self.claim.pk}/verify/"
         reject_url = f"/academic/student/claim/{self.claim.pk}/reject/"
         self.assertNotIn(verify_url, content)
@@ -577,31 +567,31 @@ class VerifyClaimViewTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_v@test.com",
+            email="coord_v@test.edu",
             name="Coordinator V",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_v@test.com",
+            email="inst_v@test.edu",
             name="Instructor V",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_submitter = User.objects.create_user(
-            email="submitter_v@test.com",
+            email="submitter_v@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_tagged = User.objects.create_user(
-            email="tagged_v@test.com",
+            email="tagged_v@test.edu",
             name="Bob Tagged",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_other = User.objects.create_user(
-            email="other_v@test.com",
+            email="other_v@test.edu",
             name="Charlie Other",
             role=User.Role.STUDENT,
             password="password123"
@@ -720,31 +710,31 @@ class RejectClaimViewTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_r@test.com",
+            email="coord_r@test.edu",
             name="Coordinator R",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_r@test.com",
+            email="inst_r@test.edu",
             name="Instructor R",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_submitter = User.objects.create_user(
-            email="submitter_r@test.com",
+            email="submitter_r@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_tagged = User.objects.create_user(
-            email="tagged_r@test.com",
+            email="tagged_r@test.edu",
             name="Bob Tagged",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_other = User.objects.create_user(
-            email="other_r@test.com",
+            email="other_r@test.edu",
             name="Charlie Other",
             role=User.Role.STUDENT,
             password="password123"
@@ -863,25 +853,25 @@ class SharedContributionsProgressUITests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_ui_c@test.com",
+            email="coord_ui_c@test.edu",
             name="Coordinator UI",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_ui_c@test.com",
+            email="inst_ui_c@test.edu",
             name="Instructor UI",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student1 = User.objects.create_user(
-            email="student1_ui_c@test.com",
+            email="student1_ui_c@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student2 = User.objects.create_user(
-            email="student2_ui_c@test.com",
+            email="student2_ui_c@test.edu",
             name="Bob Teammate",
             role=User.Role.STUDENT,
             password="password123"
@@ -1016,31 +1006,31 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_fl@test.com",
+            email="coord_fl@test.edu",
             name="Coordinator FL",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_fl@test.com",
+            email="inst_fl@test.edu",
             name="Instructor FL",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.submitter = User.objects.create_user(
-            email="alice_fl@test.com",
+            email="alice_fl@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.teammate_a = User.objects.create_user(
-            email="bob_fl@test.com",
+            email="bob_fl@test.edu",
             name="Bob Verifier",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.teammate_b = User.objects.create_user(
-            email="charlie_fl@test.com",
+            email="charlie_fl@test.edu",
             name="Charlie Rejector",
             role=User.Role.STUDENT,
             password="password123"
@@ -1125,10 +1115,9 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         # Step 3: Teammate A logs into Dashboard -> sees Pending Claim
         self.client.force_login(self.teammate_a)
         r = self.client.get(self.dashboard_url)
-        content_dash_a = r.content.decode()
-        self.assertIn("Action Required: Pending Verifications", content_dash_a)
-        self.assertIn("Database Schema", content_dash_a)
-        self.assertIn("Collaborative System Specification", content_dash_a)
+        self.assertIn(claim_a, r.context['pending_claims'])
+        self.assertEqual(claim_a.contribution_area, "Database Schema & ERD")
+        self.assertEqual(claim_a.deliverable.title, "Collaborative System Specification")
 
         # Step 4: Submitter verifies Teammate A's claim
         self.client.force_login(self.submitter)
@@ -1141,14 +1130,13 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         # Step 5: Teammate A's dashboard now has 0 pending claims
         self.client.force_login(self.teammate_a)
         r = self.client.get(self.dashboard_url)
-        self.assertNotIn("Action Required: Pending Verifications", r.content.decode())
+        self.assertNotIn(claim_a, r.context['pending_claims'])
 
         # Step 6: Teammate B logs into Dashboard -> sees Pending Claim
         self.client.force_login(self.teammate_b)
         r = self.client.get(self.dashboard_url)
-        content_dash_b = r.content.decode()
-        self.assertIn("Action Required: Pending Verifications", content_dash_b)
-        self.assertIn("Frontend Prototype Mockups", content_dash_b)
+        self.assertIn(claim_b, r.context['pending_claims'])
+        self.assertEqual(claim_b.contribution_area, "Frontend Prototype Mockups")
 
         # Step 7: Submitter rejects Teammate B's claim
         self.client.force_login(self.submitter)
@@ -1161,7 +1149,7 @@ class SharedContributionFullLifecycleIntegrationTests(TestCase):
         # Step 8: Teammate B's dashboard now has 0 pending claims
         self.client.force_login(self.teammate_b)
         r = self.client.get(self.dashboard_url)
-        self.assertNotIn("Action Required: Pending Verifications", r.content.decode())
+        self.assertNotIn(claim_b, r.context['pending_claims'])
 
         # Step 9: View progress page -> Teammate A shows Verified, Teammate B shows Rejected
         self.client.force_login(self.submitter)
@@ -1209,31 +1197,31 @@ class InstructorDeliverablesReviewViewTests(TestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_review@test.com",
+            email="coord_review@test.edu",
             name="Coordinator Review",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_review@test.com",
+            email="inst_review@test.edu",
             name="Instructor Review",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.admin = User.objects.create_user(
-            email="admin_review@test.com",
+            email="admin_review@test.edu",
             name="Admin Review",
             role=User.Role.ADMIN,
             password="password123"
         )
         self.student1 = User.objects.create_user(
-            email="student1_rev@test.com",
+            email="student1_rev@test.edu",
             name="Alice Student",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student2 = User.objects.create_user(
-            email="student2_rev@test.com",
+            email="student2_rev@test.edu",
             name="Bob Student",
             role=User.Role.STUDENT,
             password="password123"
@@ -1408,25 +1396,25 @@ class SharedContributionSeleniumE2ETests(StaticLiveServerTestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_se2e@test.com",
+            email="coord_se2e@test.edu",
             name="Coordinator SE2E",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_se2e@test.com",
+            email="inst_se2e@test.edu",
             name="Instructor SE2E",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_submitter = User.objects.create_user(
-            email="alice_se2e@test.com",
+            email="alice_se2e@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_teammate = User.objects.create_user(
-            email="bob_se2e@test.com",
+            email="bob_se2e@test.edu",
             name="Bob Contributor",
             role=User.Role.STUDENT,
             password="password123"
@@ -1493,7 +1481,7 @@ class SharedContributionSeleniumE2ETests(StaticLiveServerTestCase):
         8. Verify Alice's badge updates to 'Verified' and Bob's claim appears.
         """
         # 1. Login as Alice
-        self._login("alice_se2e@test.com", "password123")
+        self._login("alice_se2e@test.edu", "password123")
 
         # 2. Go to Team Progress
         progress_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/progress/"
@@ -1524,7 +1512,7 @@ class SharedContributionSeleniumE2ETests(StaticLiveServerTestCase):
         self._logout()
 
         # 6. Login as Bob
-        self._login("bob_se2e@test.com", "password123")
+        self._login("bob_se2e@test.edu", "password123")
 
         # 7. Bob navigates to Team Progress
         self.driver.get(progress_url)

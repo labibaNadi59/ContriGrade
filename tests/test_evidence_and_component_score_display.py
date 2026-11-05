@@ -33,25 +33,25 @@ class EvidenceAndComponentScoreDisplayTests(TestCase):
 
         # 1. Create Users
         self.coordinator = User.objects.create_user(
-            email="coord_evidence@test.com",
+            email="coord_evidence@test.edu",
             name="Coordinator Vance",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="instructor_evidence@test.com",
+            email="instructor_evidence@test.edu",
             name="Dr. Alan Turing",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.admin = User.objects.create_user(
-            email="admin_evidence@test.com",
+            email="admin_evidence@test.edu",
             name="System Admin",
             role=User.Role.ADMIN,
             password="password123"
         )
         self.student_a = User.objects.create_user(
-            email="student_a@test.com",
+            email="student_a@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
@@ -60,7 +60,7 @@ class EvidenceAndComponentScoreDisplayTests(TestCase):
         self.student_a.save()
 
         self.student_b = User.objects.create_user(
-            email="student_b@test.com",
+            email="student_b@test.edu",
             name="Bob Teammate",
             role=User.Role.STUDENT,
             password="password123"
@@ -68,7 +68,7 @@ class EvidenceAndComponentScoreDisplayTests(TestCase):
         self.student_b.github_username = "bob_dev"
         self.student_b.save()
         self.outside_student = User.objects.create_user(
-            email="outsider@test.com",
+            email="outsider@test.edu",
             name="Outside Student",
             role=User.Role.STUDENT,
             password="password123"

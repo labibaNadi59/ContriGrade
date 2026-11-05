@@ -19,7 +19,7 @@ def test_created_user_can_login():
     # New user information
     random_str = uuid.uuid4().hex[:6]
 
-    email = f"selenium_login_{random_str}@gmail.com"
+    email = f"selenium_login_{random_str}@university.edu"
     name = "Selenium Login User"
     password = "123"
 

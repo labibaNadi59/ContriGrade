@@ -63,25 +63,25 @@ class InstructorAssessmentReviewSeleniumTests(StaticLiveServerTestCase):
 
         # 1. Users
         self.instructor = User.objects.create_user(
-            email="inst_selenium_review@test.com",
+            email="inst_selenium_review@test.edu",
             name="Prof. Alan Kay",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_selenium_review@test.com",
+            email="coord_selenium_review@test.edu",
             name="Coord Ada Lovelace",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_selenium_review@test.com",
+            email="alice_selenium_review@test.edu",
             name="Alice Smith",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_bob = User.objects.create_user(
-            email="bob_selenium_review@test.com",
+            email="bob_selenium_review@test.edu",
             name="Bob Jones",
             role=User.Role.STUDENT,
             password="password123"
@@ -158,7 +158,7 @@ class InstructorAssessmentReviewSeleniumTests(StaticLiveServerTestCase):
         submit_btn = self.driver.find_element(By.XPATH, "//button[@type='submit']")
 
         user_field.clear()
-        user_field.send_keys("inst_selenium_review@test.com")
+        user_field.send_keys("inst_selenium_review@test.edu")
         pass_field.clear()
         pass_field.send_keys("password123")
         submit_btn.click()

@@ -54,13 +54,13 @@ class ConfigurationPersistenceSeleniumTests(StaticLiveServerTestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_sel_pers@test.com",
+            email="coord_sel_pers@test.edu",
             name="Coord Persist",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_sel_pers@test.com",
+            email="inst_sel_pers@test.edu",
             name="Prof. Persist",
             role=User.Role.INSTRUCTOR,
             password="password123"
@@ -108,7 +108,7 @@ class ConfigurationPersistenceSeleniumTests(StaticLiveServerTestCase):
 
     def test_01_saved_weights_persist_after_browser_reload(self):
         """Selenium verifies assessment weights display correctly and persist across page reload."""
-        self._login("inst_sel_pers@test.com", "password123")
+        self._login("inst_sel_pers@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_url}")
 
         w_gh = self.wait.until(EC.presence_of_element_located((By.NAME, "weight_github")))
@@ -128,7 +128,7 @@ class ConfigurationPersistenceSeleniumTests(StaticLiveServerTestCase):
 
     def test_02_newly_saved_weights_persist_on_project_page(self):
         """Selenium verifies instructor-updated weights persist after saving and reloading."""
-        self._login("inst_sel_pers@test.com", "password123")
+        self._login("inst_sel_pers@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_url}")
 
         self.driver.execute_script("""
@@ -154,7 +154,7 @@ class ConfigurationPersistenceSeleniumTests(StaticLiveServerTestCase):
 
     def test_03_saved_criteria_persist_across_reloads(self):
         """Selenium verifies added evaluation criterion persists and remains visible on reload."""
-        self._login("inst_sel_pers@test.com", "password123")
+        self._login("inst_sel_pers@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_url}#peer-criteria")
 
         name_in = self.wait.until(EC.presence_of_element_located((By.NAME, "criterion_name")))
@@ -182,7 +182,7 @@ class ConfigurationPersistenceSeleniumTests(StaticLiveServerTestCase):
             name="Basic Quality",
             max_score=5
         )
-        self._login("inst_sel_pers@test.com", "password123")
+        self._login("inst_sel_pers@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_url}#peer-criteria")
 
         # Open edit criterion form
@@ -210,7 +210,7 @@ class ConfigurationPersistenceSeleniumTests(StaticLiveServerTestCase):
 
     def test_05_coordinator_policy_persists_across_sessions(self):
         """Selenium verifies coordinator-saved policy weights persist across login sessions."""
-        self._login("coord_sel_pers@test.com", "password123")
+        self._login("coord_sel_pers@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/coordinator/courses/")
 
         edit_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@onclick, 'toggleEdit')]")))
@@ -235,7 +235,7 @@ class ConfigurationPersistenceSeleniumTests(StaticLiveServerTestCase):
         time.sleep(1)
 
         # Re-login in a fresh session
-        self._login("coord_sel_pers@test.com", "password123")
+        self._login("coord_sel_pers@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/coordinator/courses/")
 
         body_text = self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "body"))).text
@@ -246,7 +246,7 @@ class ConfigurationPersistenceSeleniumTests(StaticLiveServerTestCase):
     def test_06_complete_configuration_consistency_across_views(self):
         """Selenium verifies project configuration remains consistent across multiple navigations."""
         EvaluationCriterion.objects.create(project=self.project, name="Benchmark Rubric", max_score=10)
-        self._login("inst_sel_pers@test.com", "password123")
+        self._login("inst_sel_pers@test.edu", "password123")
 
         # 1. Check edit page
         self.driver.get(f"{self.live_server_url}{self.edit_url}")

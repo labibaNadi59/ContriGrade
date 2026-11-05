@@ -32,19 +32,19 @@ class NonCodingDeliverableModelTests(TestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_model@test.com",
+            email="coord_model@test.edu",
             name="Coordinator Test",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_model@test.com",
+            email="inst_model@test.edu",
             name="Instructor Test",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student = User.objects.create_user(
-            email="student_model@test.com",
+            email="student_model@test.edu",
             name="Student Test",
             role=User.Role.STUDENT,
             password="password123"
@@ -255,25 +255,25 @@ class DeliverableSubmissionViewTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_sub@test.com",
+            email="coord_sub@test.edu",
             name="Coordinator Sub",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_sub@test.com",
+            email="inst_sub@test.edu",
             name="Instructor Sub",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_member = User.objects.create_user(
-            email="member_sub@test.com",
+            email="member_sub@test.edu",
             name="Student Member",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_other = User.objects.create_user(
-            email="other_sub@test.com",
+            email="other_sub@test.edu",
             name="Student Other",
             role=User.Role.STUDENT,
             password="password123"
@@ -472,31 +472,31 @@ class EditDeliverableWorkflowTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_edit@test.com",
+            email="coord_edit@test.edu",
             name="Coordinator Edit",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_edit@test.com",
+            email="inst_edit@test.edu",
             name="Instructor Edit",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_owner = User.objects.create_user(
-            email="owner_edit@test.com",
+            email="owner_edit@test.edu",
             name="Student Owner",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_teammate = User.objects.create_user(
-            email="teammate_edit@test.com",
+            email="teammate_edit@test.edu",
             name="Student Teammate",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_other = User.objects.create_user(
-            email="other_edit@test.com",
+            email="other_edit@test.edu",
             name="Student Other",
             role=User.Role.STUDENT,
             password="password123"
@@ -648,25 +648,25 @@ class DeleteDeliverableWorkflowTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_del@test.com",
+            email="coord_del@test.edu",
             name="Coordinator Del",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_del@test.com",
+            email="inst_del@test.edu",
             name="Instructor Del",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_owner = User.objects.create_user(
-            email="owner_del@test.com",
+            email="owner_del@test.edu",
             name="Student Owner",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_teammate = User.objects.create_user(
-            email="teammate_del@test.com",
+            email="teammate_del@test.edu",
             name="Student Teammate",
             role=User.Role.STUDENT,
             password="password123"
@@ -737,7 +737,7 @@ class DeleteDeliverableWorkflowTests(TestCase):
     def test_delete_by_outside_student_blocked_by_security_rule(self):
         """Student from an unrelated team cannot delete the deliverable."""
         student_other = User.objects.create_user(
-            email="other_del@test.com",
+            email="other_del@test.edu",
             name="Student Other",
             role=User.Role.STUDENT,
             password="password123"
@@ -798,25 +798,25 @@ class DeliverableUIPermissionsTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_ui@test.com",
+            email="coord_ui@test.edu",
             name="Coordinator UI",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_ui@test.com",
+            email="inst_ui@test.edu",
             name="Instructor UI",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_a = User.objects.create_user(
-            email="student_a@test.com",
+            email="student_a@test.edu",
             name="Student Alice",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_b = User.objects.create_user(
-            email="student_b@test.com",
+            email="student_b@test.edu",
             name="Student Bob",
             role=User.Role.STUDENT,
             password="password123"
@@ -911,25 +911,25 @@ class DeliverableCompleteLifecycleIntegrationTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_lifecycle@test.com",
+            email="coord_lifecycle@test.edu",
             name="Coordinator Life",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_lifecycle@test.com",
+            email="inst_lifecycle@test.edu",
             name="Instructor Life",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student1 = User.objects.create_user(
-            email="student1_life@test.com",
+            email="student1_life@test.edu",
             name="Student One",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student2 = User.objects.create_user(
-            email="student2_life@test.com",
+            email="student2_life@test.edu",
             name="Student Two",
             role=User.Role.STUDENT,
             password="password123"
@@ -1095,19 +1095,19 @@ class DeliverableSeleniumE2EWorkflowTests(StaticLiveServerTestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_e2e@test.com",
+            email="coord_e2e@test.edu",
             name="Coordinator E2E",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_e2e@test.com",
+            email="inst_e2e@test.edu",
             name="Instructor E2E",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student = User.objects.create_user(
-            email="student_e2e@test.com",
+            email="student_e2e@test.edu",
             name="Alice Student",
             role=User.Role.STUDENT,
             password="password123"
@@ -1164,7 +1164,7 @@ class DeliverableSeleniumE2EWorkflowTests(StaticLiveServerTestCase):
         9. Click 'Delete' button -> arrive at confirmation page.
         10. Click 'Yes, Delete It' -> deliverable removed, empty state shown.
         """
-        self._login("student_e2e@test.com", "password123")
+        self._login("student_e2e@test.edu", "password123")
 
         # Navigate to Dashboard
         self.driver.get(f"{self.live_server_url}/academic/student/dashboard/")

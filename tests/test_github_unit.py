@@ -99,11 +99,11 @@ class TestGitHubBackendUnit(TestCase):
         team = Team.objects.filter(pk=2).first()
         if not team:
             coord, _ = User.objects.get_or_create(
-                email="coord@gmail.com",
+                email="coord@university.edu",
                 defaults={"name": "Coordinator", "role": User.Role.COORDINATOR}
             )
             user, _ = User.objects.get_or_create(
-                email="labiba@gmail.com",
+                email="labiba@university.edu",
                 defaults={"name": "labiba", "github_username": "labibaNadi59", "role": User.Role.STUDENT}
             )
             course, _ = Course.objects.get_or_create(course_code="CSE 101", defaults={"course_name": "Test Course", "coordinator": coord})

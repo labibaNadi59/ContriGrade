@@ -105,7 +105,7 @@ class TestInstructorAssignmentSelenium(StaticLiveServerTestCase):
 
     def setUp(self):
         super().setUp()
-        self.coord_email = "alok@gmail.com"
+        self.coord_email = "alok@university.edu"
         self.password = "123"
         self.coordinator = User.objects.create_user(
             email=self.coord_email,
@@ -114,19 +114,19 @@ class TestInstructorAssignmentSelenium(StaticLiveServerTestCase):
             password=self.password
         )
         self.instructor_1 = User.objects.create_user(
-            email="test_inst1@example.com",
+            email="test_inst1@example.edu",
             name="Test Instructor 1",
             role=User.Role.INSTRUCTOR,
             password=self.password
         )
         self.instructor_2 = User.objects.create_user(
-            email="test_inst2@example.com",
+            email="test_inst2@example.edu",
             name="Test Instructor 2",
             role=User.Role.INSTRUCTOR,
             password=self.password
         )
         self.student = User.objects.create_user(
-            email="test_student@example.com",
+            email="test_student@example.edu",
             name="Test Student",
             role=User.Role.STUDENT,
             password=self.password

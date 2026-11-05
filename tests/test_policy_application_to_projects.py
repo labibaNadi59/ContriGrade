@@ -25,13 +25,13 @@ class PolicyApplicationToProjectsIntegrationTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_app@example.com",
+            email="coord_app@example.edu",
             name="Coordinator App",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_app@example.com",
+            email="inst_app@example.edu",
             name="Instructor App",
             role=User.Role.INSTRUCTOR,
             password="password123"
@@ -147,7 +147,7 @@ class PolicyApplicationToProjectsIntegrationTests(TestCase):
     def test_05_course_policy_isolation_preserves_other_course_projects(self):
         """Updating Course A policy does not affect projects in Course B."""
         coord_b = User.objects.create_user(
-            email="coord_b@example.com",
+            email="coord_b@example.edu",
             name="Coordinator B",
             role=User.Role.COORDINATOR,
             password="password123"

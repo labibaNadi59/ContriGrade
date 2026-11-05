@@ -26,25 +26,25 @@ class BaseAssessmentTestSetup(TestCase):
 
         # Users
         self.coordinator = User.objects.create_user(
-            email="coord_assess@example.com",
+            email="coord_assess@example.edu",
             name="Coordinator Alice",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_assess@example.com",
+            email="inst_assess@example.edu",
             name="Instructor Bob",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.other_instructor = User.objects.create_user(
-            email="other_inst@example.com",
+            email="other_inst@example.edu",
             name="Instructor Other",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student = User.objects.create_user(
-            email="student_assess@example.com",
+            email="student_assess@example.edu",
             name="Student Charlie",
             role=User.Role.STUDENT,
             password="password123"

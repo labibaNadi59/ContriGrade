@@ -54,7 +54,7 @@ def test_invalid_login():
         # Enter invalid email
         driver.find_element(
             By.NAME, "username"
-        ).send_keys("wrong@example.com")
+        ).send_keys("wrong@example.edu")
 
         # Enter invalid password
         driver.find_element(

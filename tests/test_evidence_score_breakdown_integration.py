@@ -33,19 +33,19 @@ class EvidenceAndScoreBreakdownIntegrationTests(TestCase):
 
         # Users
         self.instructor = User.objects.create_user(
-            email="prof_integration@test.com",
+            email="prof_integration@test.edu",
             name="Prof. Donald Knuth",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_integration@test.com",
+            email="coord_integration@test.edu",
             name="Coord Grace Hopper",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_proj1@test.com",
+            email="alice_proj1@test.edu",
             name="Alice Walker",
             role=User.Role.STUDENT,
             password="password123"
@@ -54,7 +54,7 @@ class EvidenceAndScoreBreakdownIntegrationTests(TestCase):
         self.student_alice.save()
 
         self.student_bob = User.objects.create_user(
-            email="bob_proj1@test.com",
+            email="bob_proj1@test.edu",
             name="Bob Smith",
             role=User.Role.STUDENT,
             password="password123"
@@ -63,7 +63,7 @@ class EvidenceAndScoreBreakdownIntegrationTests(TestCase):
         self.student_bob.save()
 
         self.student_charlie = User.objects.create_user(
-            email="charlie_proj2@test.com",
+            email="charlie_proj2@test.edu",
             name="Charlie Brown",
             role=User.Role.STUDENT,
             password="password123"

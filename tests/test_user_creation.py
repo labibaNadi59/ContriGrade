@@ -28,7 +28,7 @@ def test_admin_creates_user_and_verify_information():
 
         random_str = uuid.uuid4().hex[:6]
 
-        email = f"selenium_{random_str}@gmail.com"
+        email = f"selenium_{random_str}@university.edu"
         name = "Selenium Test User"
         password = "123"
 

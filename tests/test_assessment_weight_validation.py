@@ -24,13 +24,13 @@ class AssessmentWeightValidationUnitTests(TestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_val@example.com",
+            email="coord_val@example.edu",
             name="Coordinator Validation",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_val@example.com",
+            email="inst_val@example.edu",
             name="Instructor Validation",
             role=User.Role.INSTRUCTOR,
             password="password123"

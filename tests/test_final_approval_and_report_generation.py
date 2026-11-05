@@ -36,19 +36,19 @@ class FinalApprovalAndReportGenerationIntegrationTests(TestCase):
 
         # 1. Users
         self.instructor = User.objects.create_user(
-            email="inst_final_report@test.com",
+            email="inst_final_report@test.edu",
             name="Dr. Leslie Lamport",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_final_report@test.com",
+            email="coord_final_report@test.edu",
             name="Coord Barbara Liskov",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_final_rep@test.com",
+            email="alice_final_rep@test.edu",
             name="Alice Smith",
             role=User.Role.STUDENT,
             password="password123"
@@ -57,7 +57,7 @@ class FinalApprovalAndReportGenerationIntegrationTests(TestCase):
         self.student_alice.save()
 
         self.student_bob = User.objects.create_user(
-            email="bob_final_rep@test.com",
+            email="bob_final_rep@test.edu",
             name="Bob Jones",
             role=User.Role.STUDENT,
             password="password123"
@@ -315,7 +315,7 @@ class FinalApprovalAndReportGenerationIntegrationTests(TestCase):
         """Verifies project-wide class report consolidates scores, teams, and approvals accurately."""
         # Setup Team 2 (Beta Team) with student Charlie
         student_charlie = User.objects.create_user(
-            email="charlie_final_rep@test.com",
+            email="charlie_final_rep@test.edu",
             name="Charlie Brown",
             role=User.Role.STUDENT,
             password="password123"

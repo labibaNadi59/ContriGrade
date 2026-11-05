@@ -34,31 +34,31 @@ class SelfAndDuplicateBaseTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_sd@test.com",
+            email="coord_sd@test.edu",
             name="Coordinator Davis",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_sd@test.com",
+            email="inst_sd@test.edu",
             name="Dr. Sarah Jenkins",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.alice = User.objects.create_user(
-            email="alice_sd@test.com",
+            email="alice_sd@test.edu",
             name="Alice Evaluator",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.bob = User.objects.create_user(
-            email="bob_sd@test.com",
+            email="bob_sd@test.edu",
             name="Bob Evaluatee",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.charlie = User.objects.create_user(
-            email="charlie_sd@test.com",
+            email="charlie_sd@test.edu",
             name="Charlie Teammate",
             role=User.Role.STUDENT,
             password="password123"
@@ -397,25 +397,25 @@ class SelfAndDuplicatePreventionSeleniumE2ETests(StaticLiveServerTestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_se_sd@test.com",
+            email="coord_se_sd@test.edu",
             name="Coord SE",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_se_sd@test.com",
+            email="inst_se_sd@test.edu",
             name="Dr. Jenkins",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.alice = User.objects.create_user(
-            email="alice_se_sd@test.com",
+            email="alice_se_sd@test.edu",
             name="Alice Evaluator",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.bob = User.objects.create_user(
-            email="bob_se_sd@test.com",
+            email="bob_se_sd@test.edu",
             name="Bob Evaluatee",
             role=User.Role.STUDENT,
             password="password123"
@@ -491,7 +491,7 @@ class SelfAndDuplicatePreventionSeleniumE2ETests(StaticLiveServerTestCase):
         bob_eval_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/evaluate/{self.bob.pk}/"
 
         # 1. Login as Alice
-        self._login("alice_se_sd@test.com", "password123")
+        self._login("alice_se_sd@test.edu", "password123")
         self.driver.get(progress_url)
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(., 'Team Progress')]")))
 

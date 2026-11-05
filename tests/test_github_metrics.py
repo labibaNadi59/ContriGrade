@@ -25,13 +25,13 @@ class TestGitHubMetricsRetrieval(TestCase):
     def setUp(self):
         cache.clear()
         self.coordinator = User.objects.create_user(
-            email="coord_retrieval@test.com",
+            email="coord_retrieval@test.edu",
             name="Coordinator Test",
             role="COORDINATOR",
             password="testpassword123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_retrieval@test.com",
+            email="inst_retrieval@test.edu",
             name="Instructor Test",
             role="INSTRUCTOR",
             password="testpassword123"
@@ -286,13 +286,13 @@ class TestGitHubMetricsAnalysis(TestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_analysis@test.com",
+            email="coord_analysis@test.edu",
             name="Coordinator Analysis",
             role="COORDINATOR",
             password="testpassword123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_analysis@test.com",
+            email="inst_analysis@test.edu",
             name="Instructor Analytics",
             role="INSTRUCTOR",
             password="testpassword123"
@@ -319,7 +319,7 @@ class TestGitHubMetricsAnalysis(TestCase):
         )
 
         self.student1 = User.objects.create_user(
-            email="alice@test.com",
+            email="alice@test.edu",
             name="Alice Walker",
             role="STUDENT",
             password="pwd"
@@ -328,7 +328,7 @@ class TestGitHubMetricsAnalysis(TestCase):
         self.student1.save()
 
         self.student2 = User.objects.create_user(
-            email="bob@test.com",
+            email="bob@test.edu",
             name="Bob Smith",
             role="STUDENT",
             password="pwd"
@@ -605,19 +605,19 @@ class TestGitHubMetricsDisplayViews(TestCase):
         self.client = Client()
 
         self.instructor = User.objects.create_user(
-            email="prof_display@test.com",
+            email="prof_display@test.edu",
             name="Professor Davis",
             role="INSTRUCTOR",
             password="password123"
         )
         self.admin_user = User.objects.create_user(
-            email="admin_display@test.com",
+            email="admin_display@test.edu",
             name="Admin User",
             role="ADMIN",
             password="password123"
         )
         self.student1 = User.objects.create_user(
-            email="carol@test.com",
+            email="carol@test.edu",
             name="Carol Danvers",
             role="STUDENT",
             password="password123"
@@ -626,7 +626,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
         self.student1.save()
 
         self.student2 = User.objects.create_user(
-            email="dave@test.com",
+            email="dave@test.edu",
             name="Dave Bowman",
             role="STUDENT",
             password="password123"
@@ -634,14 +634,14 @@ class TestGitHubMetricsDisplayViews(TestCase):
         self.student2.github_username = "DaveDev"
         self.student2.save()
         self.outsider_student = User.objects.create_user(
-            email="outsider@test.com",
+            email="outsider@test.edu",
             name="Outsider Student",
             role="STUDENT",
             password="password123"
         )
 
         self.coordinator = User.objects.create_user(
-            email="coord_display@test.com",
+            email="coord_display@test.edu",
             name="Coordinator Display",
             role="COORDINATOR",
             password="password123"
@@ -693,7 +693,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
 
     def test_student_progress_non_team_member_returns_404(self):
         """Student who is not a member of the requested team gets 404."""
-        self.client.login(email="outsider@test.com", password="password123")
+        self.client.login(email="outsider@test.edu", password="password123")
         url = f"/academic/student/team/{self.team.pk}/progress/"
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 404)
@@ -703,7 +703,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
         self.team.github_repo_url = None
         self.team.save()
 
-        self.client.login(email="carol@test.com", password="password123")
+        self.client.login(email="carol@test.edu", password="password123")
         url = f"/academic/student/team/{self.team.pk}/progress/"
         resp = self.client.get(url)
 
@@ -719,7 +719,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
             "message": "GitHub API rate limit exceeded."
         }
 
-        self.client.login(email="carol@test.com", password="password123")
+        self.client.login(email="carol@test.edu", password="password123")
         url = f"/academic/student/team/{self.team.pk}/progress/"
         resp = self.client.get(url)
 
@@ -766,7 +766,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
             ]
         }
 
-        self.client.login(email="carol@test.com", password="password123")
+        self.client.login(email="carol@test.edu", password="password123")
         url = f"/academic/student/team/{self.team.pk}/progress/"
         resp = self.client.get(url)
 
@@ -807,7 +807,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
         """Verifies ?refresh=true passes force_refresh=True to fetch_team_commits."""
         mock_fetch.return_value = {"status": "success", "total_commits": 0, "commits": []}
 
-        self.client.login(email="carol@test.com", password="password123")
+        self.client.login(email="carol@test.edu", password="password123")
         url = f"/academic/student/team/{self.team.pk}/progress/?refresh=true"
         self.client.get(url)
 
@@ -817,7 +817,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
 
     def test_instructor_analytics_student_denied(self):
         """Student attempting to access instructor analytics is denied and redirected."""
-        self.client.login(email="carol@test.com", password="password123")
+        self.client.login(email="carol@test.edu", password="password123")
         url = f"/academic/instructor/team/{self.team.pk}/analytics/"
         resp = self.client.get(url)
 
@@ -826,7 +826,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
 
     def test_instructor_analytics_instructor_access_allowed(self):
         """Instructor can access team analytics dashboard."""
-        self.client.login(email="prof_display@test.com", password="password123")
+        self.client.login(email="prof_display@test.edu", password="password123")
         url = f"/academic/instructor/team/{self.team.pk}/analytics/"
 
         with patch('academic.views.fetch_team_commits') as mock_fetch:
@@ -841,7 +841,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
 
     def test_instructor_analytics_admin_access_allowed(self):
         """Admin can access team analytics dashboard."""
-        self.client.login(email="admin_display@test.com", password="password123")
+        self.client.login(email="admin_display@test.edu", password="password123")
         url = f"/academic/instructor/team/{self.team.pk}/analytics/"
 
         with patch('academic.views.fetch_team_commits') as mock_fetch:
@@ -858,7 +858,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
         self.team.github_repo_url = None
         self.team.save()
 
-        self.client.login(email="prof_display@test.com", password="password123")
+        self.client.login(email="prof_display@test.edu", password="password123")
         url = f"/academic/instructor/team/{self.team.pk}/analytics/"
         resp = self.client.get(url)
 
@@ -904,7 +904,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
             ]
         }
 
-        self.client.login(email="prof_display@test.com", password="password123")
+        self.client.login(email="prof_display@test.edu", password="password123")
         url = f"/academic/instructor/team/{self.team.pk}/analytics/"
         resp = self.client.get(url)
 
@@ -938,7 +938,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
         """Verifies ?refresh=true passes force_refresh=True."""
         mock_fetch.return_value = {"status": "success", "total_commits": 0, "commits": []}
 
-        self.client.login(email="prof_display@test.com", password="password123")
+        self.client.login(email="prof_display@test.edu", password="password123")
         url = f"/academic/instructor/team/{self.team.pk}/analytics/?refresh=true"
         self.client.get(url)
 
@@ -948,7 +948,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
 
     def test_master_report_student_denied(self):
         """Student attempting to view master report is denied access."""
-        self.client.login(email="carol@test.com", password="password123")
+        self.client.login(email="carol@test.edu", password="password123")
         url = f"/academic/instructor/project/{self.project.pk}/report/"
         resp = self.client.get(url)
 
@@ -1002,7 +1002,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
             ]
         }
 
-        self.client.login(email="prof_display@test.com", password="password123")
+        self.client.login(email="prof_display@test.edu", password="password123")
         url = f"/academic/instructor/project/{self.project.pk}/report/"
         resp = self.client.get(url)
 
@@ -1055,7 +1055,7 @@ class TestGitHubMetricsDisplayViews(TestCase):
             ]
         }
 
-        self.client.login(email="prof_display@test.com", password="password123")
+        self.client.login(email="prof_display@test.edu", password="password123")
         url = f"/academic/instructor/project/{self.project.pk}/report/?export=csv"
         resp = self.client.get(url)
 

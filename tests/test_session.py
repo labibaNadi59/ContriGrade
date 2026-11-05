@@ -21,7 +21,7 @@ def test_instructor_can_create_session_with_deadline():
         # 2. Login as Instructor
         wait.until(
             EC.presence_of_element_located((By.NAME, "username"))
-        ).send_keys("tanjina@gmail.com")
+        ).send_keys("tanjina@university.edu")
 
         driver.find_element(
             By.NAME, "password"

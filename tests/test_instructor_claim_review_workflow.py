@@ -34,43 +34,43 @@ class InstructorReviewBaseTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_ir@test.com",
+            email="coord_ir@test.edu",
             name="Coordinator Vance",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_ir@test.com",
+            email="inst_ir@test.edu",
             name="Dr. Aris Thorne",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.admin = User.objects.create_user(
-            email="admin_ir@test.com",
+            email="admin_ir@test.edu",
             name="Admin System",
             role=User.Role.ADMIN,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_ir@test.com",
+            email="alice_ir@test.edu",
             name="Alice Submitter",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_bob = User.objects.create_user(
-            email="bob_ir@test.com",
+            email="bob_ir@test.edu",
             name="Bob Verified",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_charlie = User.objects.create_user(
-            email="charlie_ir@test.com",
+            email="charlie_ir@test.edu",
             name="Charlie Rejected",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_diana = User.objects.create_user(
-            email="diana_ir@test.com",
+            email="diana_ir@test.edu",
             name="Diana Pending",
             role=User.Role.STUDENT,
             password="password123"
@@ -461,31 +461,31 @@ class InstructorReviewSeleniumE2ETests(StaticLiveServerTestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_se_ir@test.com",
+            email="coord_se_ir@test.edu",
             name="Coord SE",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_se_ir@test.com",
+            email="inst_se_ir@test.edu",
             name="Dr. Sarah Jenkins",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_lead = User.objects.create_user(
-            email="lead_se_ir@test.com",
+            email="lead_se_ir@test.edu",
             name="Alex Lead",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_bob = User.objects.create_user(
-            email="bob_se_ir@test.com",
+            email="bob_se_ir@test.edu",
             name="Bob Verified",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_charlie = User.objects.create_user(
-            email="charlie_se_ir@test.com",
+            email="charlie_se_ir@test.edu",
             name="Charlie Rejected",
             role=User.Role.STUDENT,
             password="password123"
@@ -561,7 +561,7 @@ class InstructorReviewSeleniumE2ETests(StaticLiveServerTestCase):
         review_url = f"{self.live_server_url}/academic/instructor/team/{self.team.pk}/deliverables/"
 
         # 1. Login as instructor
-        self._login("inst_se_ir@test.com", "password123")
+        self._login("inst_se_ir@test.edu", "password123")
 
         # 2. Navigate to Deliverables & Peer Reviews page
         self.driver.get(review_url)

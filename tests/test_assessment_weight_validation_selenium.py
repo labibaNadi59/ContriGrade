@@ -54,13 +54,13 @@ class AssessmentWeightValidationSeleniumTests(StaticLiveServerTestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_sel_val@test.com",
+            email="coord_sel_val@test.edu",
             name="Coord Weight Val",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_sel_val@test.com",
+            email="inst_sel_val@test.edu",
             name="Prof. Weight Val",
             role=User.Role.INSTRUCTOR,
             password="password123"
@@ -108,7 +108,7 @@ class AssessmentWeightValidationSeleniumTests(StaticLiveServerTestCase):
 
     def test_01_coordinator_policy_ui_rejects_subtotal_under_100(self):
         """Selenium verifies coordinator policy save button is disabled when total is under 100%."""
-        self._login("coord_sel_val@test.com", "password123")
+        self._login("coord_sel_val@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/coordinator/courses/")
 
         edit_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@onclick, 'toggleEdit')]")))
@@ -135,7 +135,7 @@ class AssessmentWeightValidationSeleniumTests(StaticLiveServerTestCase):
 
     def test_02_coordinator_policy_ui_rejects_subtotal_over_100(self):
         """Selenium verifies coordinator policy save button is disabled when total is over 100%."""
-        self._login("coord_sel_val@test.com", "password123")
+        self._login("coord_sel_val@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/coordinator/courses/")
 
         edit_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@onclick, 'toggleEdit')]")))
@@ -161,7 +161,7 @@ class AssessmentWeightValidationSeleniumTests(StaticLiveServerTestCase):
 
     def test_03_coordinator_policy_ui_accepts_exact_100(self):
         """Selenium verifies coordinator policy save button is enabled when total is exactly 100%."""
-        self._login("coord_sel_val@test.com", "password123")
+        self._login("coord_sel_val@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/coordinator/courses/")
 
         edit_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@onclick, 'toggleEdit')]")))
@@ -187,7 +187,7 @@ class AssessmentWeightValidationSeleniumTests(StaticLiveServerTestCase):
 
     def test_04_policy_request_modal_rejects_invalid_weights(self):
         """Selenium verifies policy request modal submit button remains disabled for invalid totals."""
-        self._login("inst_sel_val@test.com", "password123")
+        self._login("inst_sel_val@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_url}")
 
         req_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Request Custom Policy')]")))
@@ -213,7 +213,7 @@ class AssessmentWeightValidationSeleniumTests(StaticLiveServerTestCase):
 
     def test_05_policy_request_modal_enables_submit_at_100(self):
         """Selenium verifies policy request modal submit button becomes enabled when total is 100%."""
-        self._login("inst_sel_val@test.com", "password123")
+        self._login("inst_sel_val@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_url}")
 
         req_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Request Custom Policy')]")))
@@ -239,7 +239,7 @@ class AssessmentWeightValidationSeleniumTests(StaticLiveServerTestCase):
 
     def test_06_server_validation_rejects_invalid_project_weights(self):
         """Selenium verifies server validation rejects non-100% weights and displays validation error."""
-        self._login("inst_sel_val@test.com", "password123")
+        self._login("inst_sel_val@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_url}")
 
         # Unlock weight fields in DOM and submit invalid total

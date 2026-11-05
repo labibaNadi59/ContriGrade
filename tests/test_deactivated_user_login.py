@@ -35,7 +35,7 @@ def test_deactivated_user_cannot_login():
             )
         )
 
-        username.send_keys("zaima@gamil.com")
+        username.send_keys("zaima@university.edu")
         password.send_keys("123")
 
         password.submit()

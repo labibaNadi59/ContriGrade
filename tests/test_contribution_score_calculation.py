@@ -28,13 +28,13 @@ class ContributionScoreCalculationUnitTests(TestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_calc@example.com",
+            email="coord_calc@example.edu",
             name="Coordinator Calc",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_calc@example.com",
+            email="inst_calc@example.edu",
             name="Instructor Calc",
             role=User.Role.INSTRUCTOR,
             password="password123"
@@ -50,13 +50,13 @@ class ContributionScoreCalculationUnitTests(TestCase):
             instructor=self.instructor
         )
         self.alice = User.objects.create_user(
-            email="alice_calc@example.com",
+            email="alice_calc@example.edu",
             name="Alice",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.bob = User.objects.create_user(
-            email="bob_calc@example.com",
+            email="bob_calc@example.edu",
             name="Bob",
             role=User.Role.STUDENT,
             password="password123"

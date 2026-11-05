@@ -116,7 +116,7 @@ class TestGitHubFeatures(StaticLiveServerTestCase):
 
     def setUp(self):
         super().setUp()
-        User.objects.filter(email__in=["nadi@gmail.com", "tanjina@gmail.com", "labiba@gmail.com"]).delete()
+        User.objects.filter(email__in=["nadi@gmail.com", "tanjina@university.edu", "labiba@university.edu"]).delete()
         Course.objects.filter(course_code="CSE 314").delete()
         self.admin = User.objects.create_superuser(
             email="nadi@gmail.com",
@@ -124,13 +124,13 @@ class TestGitHubFeatures(StaticLiveServerTestCase):
             password="123"
         )
         self.instructor = User.objects.create_user(
-            email="tanjina@gmail.com",
+            email="tanjina@university.edu",
             name="Tanjina",
             role=User.Role.INSTRUCTOR,
             password="123"
         )
         self.student = User.objects.create_user(
-            email="labiba@gmail.com",
+            email="labiba@university.edu",
             name="labiba",
             role=User.Role.STUDENT,
             password="123"
@@ -204,7 +204,7 @@ class TestGitHubFeatures(StaticLiveServerTestCase):
     def test_tc_gh_02_student_profile_github_username_validation(self):
         """TC-GH-02: Student Profile settings validates GitHub username against GitHub API."""
         print("\n[RUNNING] TC-GH-02: Student Profile GitHub Username Validation")
-        perform_login(self.driver, "labiba@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
+        perform_login(self.driver, "labiba@university.edu", "123", f"{self.live_server_url}/accounts/login/")
 
         profile_url = f"{self.live_server_url}/accounts/profile/"
         self.driver.get(profile_url)
@@ -244,7 +244,7 @@ class TestGitHubFeatures(StaticLiveServerTestCase):
     def test_tc_gh_03_team_repo_validation_and_link(self):
         """TC-GH-03: Team GitHub repository linking validates URL format & GitHub repo existence."""
         print("\n[RUNNING] TC-GH-03: Team GitHub Repository URL Validation & Linking")
-        perform_login(self.driver, "labiba@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
+        perform_login(self.driver, "labiba@university.edu", "123", f"{self.live_server_url}/accounts/login/")
 
         repo_link_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(repo_link_url)
@@ -285,7 +285,7 @@ class TestGitHubFeatures(StaticLiveServerTestCase):
     def test_tc_gh_04_student_team_progress_dashboard(self):
         """TC-GH-04: Student views team progress dashboard with GitHub commits & visual charts."""
         print("\n[RUNNING] TC-GH-04: Student Team Progress Analytics & UI Elements")
-        perform_login(self.driver, "labiba@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
+        perform_login(self.driver, "labiba@university.edu", "123", f"{self.live_server_url}/accounts/login/")
 
         progress_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/progress/"
         self.driver.get(progress_url)
@@ -325,7 +325,7 @@ class TestGitHubFeatures(StaticLiveServerTestCase):
     def test_tc_gh_05_instructor_team_analytics_and_integrity_flags(self):
         """TC-GH-05: Instructor views Team Analytics with Recent Commits feed & Integrity Flags."""
         print("\n[RUNNING] TC-GH-05: Instructor Team Analytics & Integrity Flags Engine")
-        perform_login(self.driver, "tanjina@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
+        perform_login(self.driver, "tanjina@university.edu", "123", f"{self.live_server_url}/accounts/login/")
 
         analytics_url = f"{self.live_server_url}/academic/instructor/team/{self.team.team_id}/analytics/"
         self.driver.get(analytics_url)
@@ -367,7 +367,7 @@ class TestGitHubFeatures(StaticLiveServerTestCase):
     def test_tc_gh_06_instructor_master_report_and_csv_export(self):
         """TC-GH-06: Instructor views Master Class Report with GitHub metrics and tests CSV export."""
         print("\n[RUNNING] TC-GH-06: Master Report & CSV Export")
-        perform_login(self.driver, "tanjina@gmail.com", "123", f"{self.live_server_url}/accounts/login/")
+        perform_login(self.driver, "tanjina@university.edu", "123", f"{self.live_server_url}/accounts/login/")
 
         report_url = f"{self.live_server_url}/academic/instructor/project/{self.project.project_id}/report/"
         self.driver.get(report_url)

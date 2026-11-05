@@ -35,37 +35,37 @@ class PeerEvaluationBaseTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_pe@test.com",
+            email="coord_pe@test.edu",
             name="Coordinator Vance",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_pe@test.com",
+            email="inst_pe@test.edu",
             name="Dr. Aris Thorne",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.alice = User.objects.create_user(
-            email="alice_pe@test.com",
+            email="alice_pe@test.edu",
             name="Alice Evaluator",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.bob = User.objects.create_user(
-            email="bob_pe@test.com",
+            email="bob_pe@test.edu",
             name="Bob Evaluatee",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.charlie = User.objects.create_user(
-            email="charlie_pe@test.com",
+            email="charlie_pe@test.edu",
             name="Charlie Teammate",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.outsider = User.objects.create_user(
-            email="outsider_pe@test.com",
+            email="outsider_pe@test.edu",
             name="David Outsider",
             role=User.Role.STUDENT,
             password="password123"
@@ -558,25 +558,25 @@ class PeerEvaluationSeleniumE2ETests(StaticLiveServerTestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_pe_e2e@test.com",
+            email="coord_pe_e2e@test.edu",
             name="Coord E2E",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_pe_e2e@test.com",
+            email="inst_pe_e2e@test.edu",
             name="Inst E2E",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.alice = User.objects.create_user(
-            email="alice_pe_e2e@test.com",
+            email="alice_pe_e2e@test.edu",
             name="Alice Evaluator",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.bob = User.objects.create_user(
-            email="bob_pe_e2e@test.com",
+            email="bob_pe_e2e@test.edu",
             name="Bob Evaluatee",
             role=User.Role.STUDENT,
             password="password123"
@@ -663,7 +663,7 @@ class PeerEvaluationSeleniumE2ETests(StaticLiveServerTestCase):
         progress_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/progress/"
 
         # 1. Login as Alice
-        self._login("alice_pe_e2e@test.com", "password123")
+        self._login("alice_pe_e2e@test.edu", "password123")
         self.driver.get(progress_url)
 
         # 2. Click 'Evaluate Peer' for Bob
@@ -697,7 +697,7 @@ class PeerEvaluationSeleniumE2ETests(StaticLiveServerTestCase):
 
         # 5. Logout Alice, Login Bob
         self._logout()
-        self._login("bob_pe_e2e@test.com", "password123")
+        self._login("bob_pe_e2e@test.edu", "password123")
         self.driver.get(progress_url)
 
         # 6. Verify confidentiality on Bob's view

@@ -25,13 +25,13 @@ class ProjectAssessmentConfigurationWorkflowIntegrationTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_workflow@example.com",
+            email="coord_workflow@example.edu",
             name="Coordinator Workflow",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_workflow@example.com",
+            email="inst_workflow@example.edu",
             name="Instructor Workflow",
             role=User.Role.INSTRUCTOR,
             password="password123"

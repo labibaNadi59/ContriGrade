@@ -60,25 +60,25 @@ class AnomalyDetectionSeleniumTests(StaticLiveServerTestCase):
         super().setUp()
         # 1. Users
         self.instructor = User.objects.create_user(
-            email="inst_ui@test.com",
+            email="inst_ui@test.edu",
             name="Dr. Alan Turing",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_ui@test.com",
+            email="coord_ui@test.edu",
             name="Coord Grace",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_ui@test.com",
+            email="alice_ui@test.edu",
             name="Alice Walker",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_bob = User.objects.create_user(
-            email="bob_ui@test.com",
+            email="bob_ui@test.edu",
             name="Bob Smith",
             role=User.Role.STUDENT,
             password="password123"
@@ -144,7 +144,7 @@ class AnomalyDetectionSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_01_instructor_views_anomaly_summary_card_on_team_scores_page(self):
         """Instructor opens team scores page and verifies the summary metric card displays anomaly count & 'Flagged' badge."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.team_scores_path}")
 
         # Locate 'Detected Anomalies' metric block
@@ -161,7 +161,7 @@ class AnomalyDetectionSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_02_instructor_views_flagged_student_badge_on_team_scores_page(self):
         """Instructor verifies that the flagged student's card shows the warning badge indicator."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.team_scores_path}")
 
         # Wait for Alice's card to load
@@ -178,7 +178,7 @@ class AnomalyDetectionSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_03_instructor_views_anomaly_explanation_card_in_student_card_footer(self):
         """Instructor verifies the anomaly title, category, and explanation render in the card footer."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.team_scores_path}")
 
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//span[contains(text(), 'Peer Rating Deficit')]")))
@@ -195,7 +195,7 @@ class AnomalyDetectionSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_04_instructor_navigates_to_student_evidence_and_views_anomaly_banner(self):
         """Instructor clicks 'View Evidence' on flagged student and reviews the detailed anomaly banner."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.team_scores_path}")
         time.sleep(1)
 
@@ -221,7 +221,7 @@ class AnomalyDetectionSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_05_instructor_views_verified_clean_status_for_student_without_anomalies(self):
         """Instructor opens clean student's page and verifies 'Verified Clean' status without anomaly warnings."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.bob_evidence_path}")
 
         # Verify clean banner elements
@@ -239,7 +239,7 @@ class AnomalyDetectionSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_06_student_blocked_from_instructor_anomaly_views(self):
         """Students cannot view instructor anomaly detail pages and are redirected to student area."""
-        self._login("alice_ui@test.com")
+        self._login("alice_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.alice_evidence_path}")
 
         # Wait until student is redirected away from instructor view

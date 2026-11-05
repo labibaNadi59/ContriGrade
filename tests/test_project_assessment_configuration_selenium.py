@@ -54,13 +54,13 @@ class ProjectAssessmentConfigurationSeleniumTests(StaticLiveServerTestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_sel_cfg@test.com",
+            email="coord_sel_cfg@test.edu",
             name="Coord Sel",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_sel_cfg@test.com",
+            email="inst_sel_cfg@test.edu",
             name="Prof. Sel Config",
             role=User.Role.INSTRUCTOR,
             password="password123"
@@ -102,7 +102,7 @@ class ProjectAssessmentConfigurationSeleniumTests(StaticLiveServerTestCase):
 
     def test_01_navigate_to_configuration_page(self):
         """Selenium verifies instructor can navigate to project configuration interface."""
-        self._login("inst_sel_cfg@test.com", "password123")
+        self._login("inst_sel_cfg@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_path}")
 
         heading = self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(., 'Selenium Config Project')]")))
@@ -113,7 +113,7 @@ class ProjectAssessmentConfigurationSeleniumTests(StaticLiveServerTestCase):
 
     def test_02_switch_to_criteria_tab(self):
         """Selenium verifies instructor can switch to the Peer Evaluation Criteria tab."""
-        self._login("inst_sel_cfg@test.com", "password123")
+        self._login("inst_sel_cfg@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_path}")
 
         criteria_tab_btn = self.wait.until(EC.element_to_be_clickable((By.ID, "tab-btn-criteria")))
@@ -126,7 +126,7 @@ class ProjectAssessmentConfigurationSeleniumTests(StaticLiveServerTestCase):
 
     def test_03_add_new_criterion_via_browser(self):
         """Selenium verifies instructor can configure and add a new evaluation criterion."""
-        self._login("inst_sel_cfg@test.com", "password123")
+        self._login("inst_sel_cfg@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_path}#peer-criteria")
 
         name_input = self.wait.until(EC.presence_of_element_located((By.NAME, "criterion_name")))
@@ -153,7 +153,7 @@ class ProjectAssessmentConfigurationSeleniumTests(StaticLiveServerTestCase):
 
     def test_04_save_project_settings(self):
         """Selenium verifies instructor can update project details and save changes."""
-        self._login("inst_sel_cfg@test.com", "password123")
+        self._login("inst_sel_cfg@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_path}")
 
         desc_field = self.wait.until(EC.presence_of_element_located((By.NAME, "description")))
@@ -176,7 +176,7 @@ class ProjectAssessmentConfigurationSeleniumTests(StaticLiveServerTestCase):
             name="Temporary Metric",
             max_score=5
         )
-        self._login("inst_sel_cfg@test.com", "password123")
+        self._login("inst_sel_cfg@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_path}#peer-criteria")
 
         delete_btn = self.wait.until(EC.element_to_be_clickable((
@@ -200,7 +200,7 @@ class ProjectAssessmentConfigurationSeleniumTests(StaticLiveServerTestCase):
             name="Architecture Integrity",
             max_score=10
         )
-        self._login("inst_sel_cfg@test.com", "password123")
+        self._login("inst_sel_cfg@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.edit_path}#peer-criteria")
 
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Architecture Integrity')]")))

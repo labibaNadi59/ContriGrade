@@ -172,7 +172,7 @@ class TestTeamRepoFormValidation(TestCase):
         self.team = Team.objects.filter(pk=2).first()
         if not self.team:
             coord, _ = User.objects.get_or_create(
-                email="coord_test@example.com",
+                email="coord_test@example.edu",
                 defaults={"name": "Coordinator", "role": User.Role.COORDINATOR}
             )
             course, _ = Course.objects.get_or_create(course_code="CSE 101", defaults={"course_name": "Test Course", "coordinator": coord})
@@ -237,23 +237,23 @@ class TestRepoSubmissionViewWorkflow(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.student_in_team = User.objects.filter(email='labiba@gmail.com').first()
-        self.student_other = User.objects.filter(email='sowrov@gmail.com').first()
-        self.instructor = User.objects.filter(email='tanjina@gmail.com').first()
+        self.student_in_team = User.objects.filter(email='labiba@university.edu').first()
+        self.student_other = User.objects.filter(email='sowrov@university.edu').first()
+        self.instructor = User.objects.filter(email='tanjina@university.edu').first()
         self.team = Team.objects.filter(pk=2).first()
 
         if not (self.student_in_team and self.student_other and self.team):
             if not self.instructor:
                 self.instructor, _ = User.objects.get_or_create(
-                    email='tanjina@gmail.com', defaults={'name': 'Tanjina', 'role': User.Role.INSTRUCTOR}
+                    email='tanjina@university.edu', defaults={'name': 'Tanjina', 'role': User.Role.INSTRUCTOR}
                 )
             if not self.student_in_team:
                 self.student_in_team, _ = User.objects.get_or_create(
-                    email='labiba@gmail.com', defaults={'name': 'Labiba', 'role': User.Role.STUDENT, 'github_username': 'labibaNadi59'}
+                    email='labiba@university.edu', defaults={'name': 'Labiba', 'role': User.Role.STUDENT, 'github_username': 'labibaNadi59'}
                 )
             if not self.student_other:
                 self.student_other, _ = User.objects.get_or_create(
-                    email='sowrov@gmail.com', defaults={'name': 'Sowrov', 'role': User.Role.STUDENT}
+                    email='sowrov@university.edu', defaults={'name': 'Sowrov', 'role': User.Role.STUDENT}
                 )
             if not self.team:
                 course, _ = Course.objects.get_or_create(
@@ -422,15 +422,15 @@ class TestRepoSubmissionSeleniumE2E(StaticLiveServerTestCase):
     def setUp(self):
         super().setUp()
         self.instructor = User.objects.create_user(
-            email='tanjina@gmail.com', name='Tanjina', password='123', role=User.Role.INSTRUCTOR
+            email='tanjina@university.edu', name='Tanjina', password='123', role=User.Role.INSTRUCTOR
         )
         self.student_in_team = User.objects.create_user(
-            email='labiba@gmail.com', name='Labiba', password='123', role=User.Role.STUDENT
+            email='labiba@university.edu', name='Labiba', password='123', role=User.Role.STUDENT
         )
         self.student_in_team.github_username = 'labibaNadi59'
         self.student_in_team.save()
         self.student_other = User.objects.create_user(
-            email='sowrov@gmail.com', name='Sowrov', password='123', role=User.Role.STUDENT
+            email='sowrov@university.edu', name='Sowrov', password='123', role=User.Role.STUDENT
         )
         self.course = Course.objects.create(
             course_code="CSE 101", course_name="Test Course", coordinator=self.instructor
@@ -464,7 +464,7 @@ class TestRepoSubmissionSeleniumE2E(StaticLiveServerTestCase):
     def test_e2e_invalid_format_rejected(self):
         """Test submitting non-GitHub domain in UI displays format validation error."""
         print("\n[E2E] Testing UI rejection of invalid URL format...")
-        self._login("labiba@gmail.com", "123")
+        self._login("labiba@university.edu", "123")
 
         repo_link_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(repo_link_url)
@@ -487,7 +487,7 @@ class TestRepoSubmissionSeleniumE2E(StaticLiveServerTestCase):
     def test_e2e_nonexistent_repo_rejected(self):
         """Test submitting non-existent repo in UI displays 404 API error."""
         print("\n[E2E] Testing UI rejection of non-existent GitHub repository...")
-        self._login("labiba@gmail.com", "123")
+        self._login("labiba@university.edu", "123")
 
         repo_link_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(repo_link_url)
@@ -507,7 +507,7 @@ class TestRepoSubmissionSeleniumE2E(StaticLiveServerTestCase):
     def test_e2e_valid_repo_submission_and_dashboard_display(self):
         """Test submitting valid repo updates DB, redirects to student dashboard, and renders link."""
         print("\n[E2E] Testing successful repository submission and dashboard update...")
-        self._login("labiba@gmail.com", "123")
+        self._login("labiba@university.edu", "123")
 
         repo_link_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(repo_link_url)
@@ -535,7 +535,7 @@ class TestRepoSubmissionSeleniumE2E(StaticLiveServerTestCase):
     def test_e2e_unauthorized_student_access_security_block(self):
         """Test student from another team cannot access or submit repo for Team 2."""
         print("\n[E2E] Testing Security Block for Unauthorized Student...")
-        self._login("sowrov@gmail.com", "123")
+        self._login("sowrov@university.edu", "123")
 
         unauthorized_url = f"{self.live_server_url}/academic/student/team/{self.team.team_id}/repo/"
         self.driver.get(unauthorized_url)

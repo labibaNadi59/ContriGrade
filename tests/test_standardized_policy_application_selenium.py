@@ -54,13 +54,13 @@ class StandardizedPolicyApplicationSeleniumTests(StaticLiveServerTestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_sel_std@test.com",
+            email="coord_sel_std@test.edu",
             name="Coord Standard",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_sel_std@test.com",
+            email="inst_sel_std@test.edu",
             name="Prof. Standard",
             role=User.Role.INSTRUCTOR,
             password="password123"
@@ -107,7 +107,7 @@ class StandardizedPolicyApplicationSeleniumTests(StaticLiveServerTestCase):
 
     def test_01_coordinator_navigates_to_curriculum_policies(self):
         """Selenium verifies coordinator can access Curriculum Policies page."""
-        self._login("coord_sel_std@test.com", "password123")
+        self._login("coord_sel_std@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/coordinator/courses/")
 
         heading = self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(., 'Curriculum & Policies')]")))
@@ -118,7 +118,7 @@ class StandardizedPolicyApplicationSeleniumTests(StaticLiveServerTestCase):
 
     def test_02_coordinator_updates_standard_policy_via_ui(self):
         """Selenium verifies coordinator can update standard policy weights via live UI."""
-        self._login("coord_sel_std@test.com", "password123")
+        self._login("coord_sel_std@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/coordinator/courses/")
 
         edit_btn = self.wait.until(EC.element_to_be_clickable((
@@ -157,7 +157,7 @@ class StandardizedPolicyApplicationSeleniumTests(StaticLiveServerTestCase):
         self.policy.weight_peer = 25
         self.policy.save()
 
-        self._login("inst_sel_std@test.com", "password123")
+        self._login("inst_sel_std@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/dashboard/")
 
         # Toggle create form
@@ -197,7 +197,7 @@ class StandardizedPolicyApplicationSeleniumTests(StaticLiveServerTestCase):
             weight_github=45, weight_deliverables=35, weight_peer=20
         )
 
-        self._login("inst_sel_std@test.com", "password123")
+        self._login("inst_sel_std@test.edu", "password123")
         edit_url = reverse('edit_project', kwargs={'project_id': self.project.pk})
         self.driver.get(f"{self.live_server_url}{edit_url}")
 
@@ -206,7 +206,7 @@ class StandardizedPolicyApplicationSeleniumTests(StaticLiveServerTestCase):
 
     def test_05_instructor_submits_custom_policy_request_via_modal(self):
         """Selenium verifies instructor can submit a custom policy change request."""
-        self._login("inst_sel_std@test.com", "password123")
+        self._login("inst_sel_std@test.edu", "password123")
         edit_url = reverse('edit_project', kwargs={'project_id': self.project.pk})
         self.driver.get(f"{self.live_server_url}{edit_url}")
 
@@ -249,7 +249,7 @@ class StandardizedPolicyApplicationSeleniumTests(StaticLiveServerTestCase):
             proposed_peer=20,
             justification="Approved backend focus"
         )
-        self._login("coord_sel_std@test.com", "password123")
+        self._login("coord_sel_std@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}/academic/coordinator/requests/")
 
         approve_btn = self.wait.until(EC.element_to_be_clickable((

@@ -58,25 +58,25 @@ class CompleteContributionScoringWorkflowSeleniumTests(StaticLiveServerTestCase)
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_sel_score@test.com",
+            email="coord_sel_score@test.edu",
             name="Coord Scoring",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_sel_score@test.com",
+            email="inst_sel_score@test.edu",
             name="Prof. Scoring Workflow",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_sel_score@test.com",
+            email="alice_sel_score@test.edu",
             name="Alice Wonder",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_bob = User.objects.create_user(
-            email="bob_sel_score@test.com",
+            email="bob_sel_score@test.edu",
             name="Bob Builder",
             role=User.Role.STUDENT,
             password="password123"
@@ -145,7 +145,7 @@ class CompleteContributionScoringWorkflowSeleniumTests(StaticLiveServerTestCase)
 
     def test_01_instructor_navigates_to_contribution_scores_page(self):
         """Selenium verifies instructor can navigate to team contribution scores dashboard."""
-        self._login("inst_sel_score@test.com", "password123")
+        self._login("inst_sel_score@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.scores_path}")
 
         heading = self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(., 'Team Contribution Scores')]")))
@@ -156,7 +156,7 @@ class CompleteContributionScoringWorkflowSeleniumTests(StaticLiveServerTestCase)
 
     def test_02_scores_page_displays_individual_recommendations(self):
         """Selenium verifies individual calculated score recommendations are rendered for students."""
-        self._login("inst_sel_score@test.com", "password123")
+        self._login("inst_sel_score@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.scores_path}")
 
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Alice Wonder')]")))
@@ -167,7 +167,7 @@ class CompleteContributionScoringWorkflowSeleniumTests(StaticLiveServerTestCase)
 
     def test_03_scores_page_displays_component_evidence(self):
         """Selenium verifies component evidence metrics (Deliverables, Peer Eval) are displayed."""
-        self._login("inst_sel_score@test.com", "password123")
+        self._login("inst_sel_score@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.scores_path}")
 
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Deliverables')]")))
@@ -177,7 +177,7 @@ class CompleteContributionScoringWorkflowSeleniumTests(StaticLiveServerTestCase)
 
     def test_04_recalculate_action_refreshes_scores(self):
         """Selenium verifies clicking Recalculate triggers score refresh and preserves display."""
-        self._login("inst_sel_score@test.com", "password123")
+        self._login("inst_sel_score@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.scores_path}")
 
         recalc_link = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(., 'Recalculate')]")))
@@ -195,7 +195,7 @@ class CompleteContributionScoringWorkflowSeleniumTests(StaticLiveServerTestCase)
         self.project.weight_peer = 30
         self.project.save()
 
-        self._login("inst_sel_score@test.com", "password123")
+        self._login("inst_sel_score@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.scores_path}")
 
         body_text = self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "body"))).text
@@ -204,7 +204,7 @@ class CompleteContributionScoringWorkflowSeleniumTests(StaticLiveServerTestCase)
 
     def test_06_navigate_to_student_evidence_detail_from_scores(self):
         """Selenium verifies instructor can navigate from scores page to detailed student evidence."""
-        self._login("inst_sel_score@test.com", "password123")
+        self._login("inst_sel_score@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.scores_path}")
 
         review_link = self.wait.until(EC.element_to_be_clickable((

@@ -34,19 +34,19 @@ class AnomalyDetectionIntegrationTests(TestCase):
 
         # Users
         self.instructor = User.objects.create_user(
-            email="inst_integration@test.com",
+            email="inst_integration@test.edu",
             name="Prof. Anomaly Reviewer",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_integration@test.com",
+            email="coord_integration@test.edu",
             name="Coord Grace",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_evidence@test.com",
+            email="alice_evidence@test.edu",
             name="Alice Walker",
             role=User.Role.STUDENT,
             password="password123"
@@ -55,7 +55,7 @@ class AnomalyDetectionIntegrationTests(TestCase):
         self.student_alice.save()
 
         self.student_bob = User.objects.create_user(
-            email="bob_evidence@test.com",
+            email="bob_evidence@test.edu",
             name="Bob Smith",
             role=User.Role.STUDENT,
             password="password123"
@@ -64,7 +64,7 @@ class AnomalyDetectionIntegrationTests(TestCase):
         self.student_bob.save()
 
         self.student_charlie = User.objects.create_user(
-            email="charlie_evidence@test.com",
+            email="charlie_evidence@test.edu",
             name="Charlie Brown",
             role=User.Role.STUDENT,
             password="password123"

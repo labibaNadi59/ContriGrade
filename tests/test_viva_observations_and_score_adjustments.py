@@ -32,19 +32,19 @@ class VivaObservationsAndScoreAdjustmentsUnitTests(TestCase):
 
         # Users
         self.instructor = User.objects.create_user(
-            email="inst_viva@test.com",
+            email="inst_viva@test.edu",
             name="Prof. Donald Knuth",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_viva@test.com",
+            email="coord_viva@test.edu",
             name="Coord Grace Hopper",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student = User.objects.create_user(
-            email="student_viva@test.com",
+            email="student_viva@test.edu",
             name="Alice Smith",
             role=User.Role.STUDENT,
             password="password123"

@@ -32,13 +32,13 @@ class CompleteContributionScoreCalculationWorkflowIntegrationTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_workflow_calc@example.com",
+            email="coord_workflow_calc@example.edu",
             name="Coordinator Workflow",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_workflow_calc@example.com",
+            email="inst_workflow_calc@example.edu",
             name="Instructor Workflow",
             role=User.Role.INSTRUCTOR,
             password="password123"
@@ -54,13 +54,13 @@ class CompleteContributionScoreCalculationWorkflowIntegrationTests(TestCase):
             instructor=self.instructor
         )
         self.alice = User.objects.create_user(
-            email="alice_wf@example.com",
+            email="alice_wf@example.edu",
             name="Alice Walker",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.bob = User.objects.create_user(
-            email="bob_wf@example.com",
+            email="bob_wf@example.edu",
             name="Bob Builder",
             role=User.Role.STUDENT,
             password="password123"

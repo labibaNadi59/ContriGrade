@@ -23,13 +23,13 @@ class StandardizedAndProjectPoliciesUnitTests(TestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_policy@example.com",
+            email="coord_policy@example.edu",
             name="Coordinator Policy",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_policy@example.com",
+            email="inst_policy@example.edu",
             name="Instructor Policy",
             role=User.Role.INSTRUCTOR,
             password="password123"

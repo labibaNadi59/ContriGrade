@@ -62,25 +62,25 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_ui@test.com",
+            email="coord_ui@test.edu",
             name="Coordinator Vance",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_ui@test.com",
+            email="inst_ui@test.edu",
             name="Dr. Ada Lovelace",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_ui@test.com",
+            email="alice_ui@test.edu",
             name="Alice Walker",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_bob = User.objects.create_user(
-            email="bob_ui@test.com",
+            email="bob_ui@test.edu",
             name="Bob Smith",
             role=User.Role.STUDENT,
             password="password123"
@@ -145,7 +145,7 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_instructor_opens_evidence_page_directly_and_views_scores(self):
         """Instructor navigates directly to score details page and views score breakdown & components."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.evidence_path}")
 
         # Verify page header and student title
@@ -165,7 +165,7 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_instructor_navigates_from_team_scores_via_view_evidence_button(self):
         """Instructor opens team scores page and clicks 'View Evidence' button to open student details."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.team_scores_path}")
 
         # Locate and click 'View Evidence' button
@@ -183,7 +183,7 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_instructor_views_deliverable_evidence_details(self):
         """Instructor can review verified non-coding deliverable artifacts and claimed areas."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.evidence_path}")
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//h3[contains(., 'Verified Tasks')]")))
 
@@ -196,7 +196,7 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_instructor_views_peer_evaluation_scores_and_anonymity(self):
         """Instructor views peer evaluation ratings while reviewer identity remains anonymous."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.evidence_path}")
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//h3[contains(., 'Peer Ratings')]")))
 
@@ -204,14 +204,14 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
         self.assertIn("Technical Leadership", body_text)
         self.assertIn("4/5", body_text)
         self.assertIn("From: Anonymous Teammate", body_text)
-        self.assertNotIn("bob_ui@test.com", body_text)
+        self.assertNotIn("bob_ui@test.edu", body_text)
 
     # -------------------------------------------------------------------------
     # TEST 5: Back button returns to team contribution scores
     # -------------------------------------------------------------------------
     def test_back_to_team_scores_button_navigation(self):
         """Clicking 'Back to Team Scores' returns instructor to the team scores overview."""
-        self._login("inst_ui@test.com")
+        self._login("inst_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.evidence_path}")
 
         back_link = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(., 'Back to Team Scores')]")))
@@ -225,7 +225,7 @@ class EvidenceScoreBreakdownSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_student_blocked_from_instructor_evidence_page(self):
         """Students cannot view instructor evidence detail page and are redirected to student dashboard."""
-        self._login("alice_ui@test.com")
+        self._login("alice_ui@test.edu")
         self.driver.get(f"{self.live_server_url}{self.evidence_path}")
 
         # Wait until student is redirected to student area

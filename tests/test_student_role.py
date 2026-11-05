@@ -36,7 +36,7 @@ def test_student_role_form_load():
                 (By.NAME, "username")
             )
         )
-        username.send_keys("tia@gmail.com")
+        username.send_keys("tia@university.edu")
 
         # 3. Enter Password
         password = wait.until(
@@ -229,7 +229,7 @@ def test_student_project_role_save():
                 (By.NAME, "username")
             )
         )
-        username.send_keys("tia@gmail.com")
+        username.send_keys("tia@university.edu")
 
         # 3. Enter Password
         password = wait.until(
@@ -451,7 +451,7 @@ def test_student_project_role_update():
                 (By.NAME, "username")
             )
         )
-        username.send_keys("tia@gmail.com")
+        username.send_keys("tia@university.edu")
 
         # 3. Enter Password
         password = wait.until(
@@ -675,7 +675,7 @@ def test_student_project_role_validation():
             )
         )
 
-        username.send_keys("tia@gmail.com")
+        username.send_keys("tia@university.edu")
 
         # 3. Enter Password
         password = wait.until(
@@ -945,7 +945,7 @@ def test_role_persistence():
 
         wait.until(
             EC.visibility_of_element_located((By.NAME, "username"))
-        ).send_keys("tia@gmail.com")
+        ).send_keys("tia@university.edu")
 
         wait.until(
             EC.visibility_of_element_located((By.NAME, "password"))
@@ -1065,7 +1065,7 @@ def test_role_persistence():
             EC.visibility_of_element_located(
                 (By.NAME, "username")
             )
-        ).send_keys("tia@gmail.com")
+        ).send_keys("tia@university.edu")
 
         wait.until(
             EC.visibility_of_element_located(

@@ -34,43 +34,43 @@ class PeerEvaluationConfidentialityBaseTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.coordinator = User.objects.create_user(
-            email="coord_conf@test.com",
+            email="coord_conf@test.edu",
             name="Coordinator Vance",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_conf@test.com",
+            email="inst_conf@test.edu",
             name="Dr. Aris Reed",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.admin = User.objects.create_user(
-            email="admin_conf@test.com",
+            email="admin_conf@test.edu",
             name="System Admin",
             role=User.Role.ADMIN,
             password="password123"
         )
         self.alice = User.objects.create_user(
-            email="alice_conf@test.com",
+            email="alice_conf@test.edu",
             name="Alice Evaluator",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.bob = User.objects.create_user(
-            email="bob_conf@test.com",
+            email="bob_conf@test.edu",
             name="Bob Evaluatee",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.charlie = User.objects.create_user(
-            email="charlie_conf@test.com",
+            email="charlie_conf@test.edu",
             name="Charlie Teammate",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.diana = User.objects.create_user(
-            email="diana_conf@test.com",
+            email="diana_conf@test.edu",
             name="Diana Outsider",
             role=User.Role.STUDENT,
             password="password123"
@@ -489,25 +489,25 @@ class PeerEvaluationConfidentialitySeleniumTests(StaticLiveServerTestCase):
 
     def setUp(self):
         self.coordinator = User.objects.create_user(
-            email="coord_se_conf@test.com",
+            email="coord_se_conf@test.edu",
             name="Coord Confidential",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_se_conf@test.com",
+            email="inst_se_conf@test.edu",
             name="Dr. Aris Thorne",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.alice = User.objects.create_user(
-            email="alice_se_conf@test.com",
+            email="alice_se_conf@test.edu",
             name="Alice Confidential",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.bob = User.objects.create_user(
-            email="bob_se_conf@test.com",
+            email="bob_se_conf@test.edu",
             name="Bob Confidential",
             role=User.Role.STUDENT,
             password="password123"
@@ -589,7 +589,7 @@ class PeerEvaluationConfidentialitySeleniumTests(StaticLiveServerTestCase):
         secret_comment = "SECRET_CONFIDENTIAL_REMARK_741: Bob needs to improve unit test coverage."
 
         # Step 1: Alice logs in and evaluates Bob
-        self._login("alice_se_conf@test.com", "password123")
+        self._login("alice_se_conf@test.edu", "password123")
         self.driver.get(eval_bob_url)
 
         self.wait.until(EC.presence_of_element_located((By.NAME, f"criterion_{self.crit.pk}")))
@@ -608,7 +608,7 @@ class PeerEvaluationConfidentialitySeleniumTests(StaticLiveServerTestCase):
         self.driver.delete_all_cookies()
 
         # Step 3: Bob (evaluatee) logs in and verifies confidentiality
-        self._login("bob_se_conf@test.com", "password123")
+        self._login("bob_se_conf@test.edu", "password123")
         self.driver.get(progress_url)
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(., 'Team Progress')]")))
 
@@ -631,7 +631,7 @@ class PeerEvaluationConfidentialitySeleniumTests(StaticLiveServerTestCase):
         self.driver.delete_all_cookies()
 
         # Step 5: Instructor logs in and accesses authorized report
-        self._login("inst_se_conf@test.com", "password123")
+        self._login("inst_se_conf@test.edu", "password123")
         self.driver.get(inst_eval_url)
         self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(., 'Aggregated Peer Scores')]")))
 

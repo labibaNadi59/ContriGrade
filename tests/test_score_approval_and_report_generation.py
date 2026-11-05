@@ -32,25 +32,25 @@ class ScoreApprovalAndReportGenerationUnitTests(TestCase):
 
         # Users
         self.instructor = User.objects.create_user(
-            email="inst_report@test.com",
+            email="inst_report@test.edu",
             name="Dr. Leslie Lamport",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_report@test.com",
+            email="coord_report@test.edu",
             name="Coord Barbara Liskov",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_report@test.com",
+            email="alice_report@test.edu",
             name="Alice Smith",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_bob = User.objects.create_user(
-            email="bob_report@test.com",
+            email="bob_report@test.edu",
             name="Bob Jones",
             role=User.Role.STUDENT,
             password="password123"
@@ -268,7 +268,7 @@ class ScoreApprovalAndReportGenerationUnitTests(TestCase):
         """Verifies class-wide project assessment report correctly consolidates multiple teams in HTML & CSV."""
         # Create Team 2: Beta Team with Charlie
         student_charlie = User.objects.create_user(
-            email="charlie_report@test.com",
+            email="charlie_report@test.edu",
             name="Charlie Brown",
             role=User.Role.STUDENT,
             password="password123"

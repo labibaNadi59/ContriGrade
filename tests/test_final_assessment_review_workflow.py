@@ -36,19 +36,19 @@ class FinalAssessmentReviewWorkflowIntegrationTests(TestCase):
 
         # 1. Users
         self.instructor = User.objects.create_user(
-            email="inst_workflow@test.com",
+            email="inst_workflow@test.edu",
             name="Prof. Alan Kay",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_workflow@test.com",
+            email="coord_workflow@test.edu",
             name="Coord Ada Lovelace",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_workflow@test.com",
+            email="alice_workflow@test.edu",
             name="Alice Smith",
             role=User.Role.STUDENT,
             password="password123"
@@ -57,7 +57,7 @@ class FinalAssessmentReviewWorkflowIntegrationTests(TestCase):
         self.student_alice.save()
 
         self.student_bob = User.objects.create_user(
-            email="bob_workflow@test.com",
+            email="bob_workflow@test.edu",
             name="Bob Jones",
             role=User.Role.STUDENT,
             password="password123"

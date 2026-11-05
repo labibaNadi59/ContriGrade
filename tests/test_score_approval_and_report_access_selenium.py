@@ -63,25 +63,25 @@ class ScoreApprovalAndReportAccessSeleniumTests(StaticLiveServerTestCase):
 
         # 1. Users
         self.instructor = User.objects.create_user(
-            email="inst_sel_approval@test.com",
+            email="inst_sel_approval@test.edu",
             name="Prof. Donald Knuth",
             role=User.Role.INSTRUCTOR,
             password="password123"
         )
         self.coordinator = User.objects.create_user(
-            email="coord_sel_approval@test.com",
+            email="coord_sel_approval@test.edu",
             name="Coord Grace Hopper",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.student_alice = User.objects.create_user(
-            email="alice_sel_app@test.com",
+            email="alice_sel_app@test.edu",
             name="Alice Smith",
             role=User.Role.STUDENT,
             password="password123"
         )
         self.student_bob = User.objects.create_user(
-            email="bob_sel_app@test.com",
+            email="bob_sel_app@test.edu",
             name="Bob Jones",
             role=User.Role.STUDENT,
             password="password123"
@@ -183,7 +183,7 @@ class ScoreApprovalAndReportAccessSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_01_ui_single_student_approval_toggle(self):
         """Selenium verifies instructor can approve an individual student score and toggle it to unlock."""
-        self._login("inst_sel_approval@test.com", "password123")
+        self._login("inst_sel_approval@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.team_scores_path}")
 
         # 1. Locate Alice's single approve button and click it
@@ -226,7 +226,7 @@ class ScoreApprovalAndReportAccessSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_02_ui_bulk_team_score_approval(self):
         """Selenium verifies instructor can bulk approve all scores for an entire team."""
-        self._login("inst_sel_approval@test.com", "password123")
+        self._login("inst_sel_approval@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.team_scores_path}")
 
         # 1. Locate and click "Approve All Scores" button
@@ -253,7 +253,7 @@ class ScoreApprovalAndReportAccessSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_03_ui_navigate_to_assessment_report(self):
         """Selenium verifies clicking Assessment Report navigates to official report layout."""
-        self._login("inst_sel_approval@test.com", "password123")
+        self._login("inst_sel_approval@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.team_scores_path}")
 
         # Locate Assessment Report navigation link
@@ -284,7 +284,7 @@ class ScoreApprovalAndReportAccessSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_04_ui_report_csv_export_link(self):
         """Selenium verifies Export CSV button points to valid query param and is clickable."""
-        self._login("inst_sel_approval@test.com", "password123")
+        self._login("inst_sel_approval@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.team_report_path}")
 
         csv_btn = self.wait.until(EC.presence_of_element_located((
@@ -300,7 +300,7 @@ class ScoreApprovalAndReportAccessSeleniumTests(StaticLiveServerTestCase):
     # -------------------------------------------------------------------------
     def test_05_ui_reports_hub_and_project_report(self):
         """Selenium verifies instructor can navigate Reports Hub to launch class-wide assessment reports."""
-        self._login("inst_sel_approval@test.com", "password123")
+        self._login("inst_sel_approval@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.reports_hub_path}")
 
         # 1. Verify Reports Hub renders project card
@@ -330,7 +330,7 @@ class ScoreApprovalAndReportAccessSeleniumTests(StaticLiveServerTestCase):
     def test_06_ui_access_restrictions_for_students_and_anonymous(self):
         """Selenium verifies students and unauthenticated users are restricted from report views."""
         # 1. Student login -> attempt accessing team assessment report
-        self._login("alice_sel_app@test.com", "password123")
+        self._login("alice_sel_app@test.edu", "password123")
         self.driver.get(f"{self.live_server_url}{self.team_report_path}")
         time.sleep(1)
 

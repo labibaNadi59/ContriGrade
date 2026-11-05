@@ -44,7 +44,7 @@ def test_deadline_sync_across_views():
             )
         )
 
-        username.send_keys("tanjina@gmail.com")
+        username.send_keys("tanjina@university.edu")
         password.send_keys("123")
         password.submit()
 
@@ -135,7 +135,7 @@ def test_deadline_sync_across_views():
                 )
             )
 
-            username.send_keys("tia@gmail.com")
+            username.send_keys("tia@university.edu")
             password.send_keys("123")
             password.submit()
 

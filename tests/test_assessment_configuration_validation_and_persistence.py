@@ -25,13 +25,13 @@ class AssessmentConfigurationValidationAndPersistenceIntegrationTests(TestCase):
         self.client = Client()
 
         self.coordinator = User.objects.create_user(
-            email="coord_persist@example.com",
+            email="coord_persist@example.edu",
             name="Coordinator Persist",
             role=User.Role.COORDINATOR,
             password="password123"
         )
         self.instructor = User.objects.create_user(
-            email="inst_persist@example.com",
+            email="inst_persist@example.edu",
             name="Instructor Persist",
             role=User.Role.INSTRUCTOR,
             password="password123"

@@ -34,7 +34,7 @@ def test_deactivated_user_cannot_access_restricted_page():
             )
         )
 
-        username.send_keys("zaima@gmail.com")
+        username.send_keys("zaima@university.edu")
         password.send_keys("123")
 
         password.submit()

@@ -42,7 +42,7 @@ def test_student_dashboard_team_project_deadline():
         # Login as student
         login_as_student(
             driver,
-            "tia@gmail.com",
+            "tia@university.edu",
             "123"
         )
 
@@ -106,7 +106,7 @@ def test_student_empty_team_state():
         # Login as student
         login_as_student(
             driver,
-            "onti@gmail.com",
+            "onti@university.edu",
             "123"
         )
 
